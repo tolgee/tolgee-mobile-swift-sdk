@@ -66,25 +66,18 @@ public final class Tolgee {
     private func parsePluralForms(_ string: String, with arguments: [CVarArg]) -> String {
         // Basic ICU plural parsing for patterns like:
         // {0, plural, one {I have # apple} other {I have # apples}}
-        let pluralPattern = #"\{(\d+),\s*plural,\s*one\s*\{([^}]+)\}\s*other\s*\{([^}]+)\}\}"#
+        let pluralRegex = /\{(\d+),\s*plural,\s*one\s*\{([^}]+)\}\s*other\s*\{([^}]+)\}\}/
 
-        guard let regex = try? NSRegularExpression(pattern: pluralPattern, options: []) else {
-            return string
-        }
-
-        let nsString = string as NSString
         var result = string
 
-        let matches = regex.matches(
-            in: string, options: [], range: NSRange(location: 0, length: nsString.length))
+        // Process matches in reverse order to avoid index shifting
+        let matches = Array(result.matches(of: pluralRegex)).reversed()
 
-        for match in matches.reversed() {
-            guard match.numberOfRanges >= 4 else { continue }
-
-            let fullMatch = nsString.substring(with: match.range(at: 0))
-            let indexString = nsString.substring(with: match.range(at: 1))
-            let singularForm = nsString.substring(with: match.range(at: 2))
-            let pluralForm = nsString.substring(with: match.range(at: 3))
+        for match in matches {
+            let fullMatch = match.0
+            let indexString = String(match.1)
+            let singularForm = String(match.2)
+            let pluralForm = String(match.3)
 
             guard let argumentIndex = Int(indexString),
                 argumentIndex < arguments.count
