@@ -46,7 +46,9 @@ public final class Tolgee {
         try loadTranslations(from: data)
     }
 
-    private func parseICUString(_ icuString: String, with arguments: [CVarArg]) -> String {
+    private func parseICUString(
+        _ icuString: String, with arguments: [CVarArg], locale: Locale = .current
+    ) -> String {
         var result = icuString
 
         // Handle simple placeholder replacement {0}, {1}, etc.
@@ -58,12 +60,14 @@ public final class Tolgee {
         }
 
         // Handle plural forms
-        result = parsePluralForms(result, with: arguments)
+        result = parsePluralForms(result, with: arguments, locale: locale)
 
         return result
     }
 
-    private func parsePluralForms(_ string: String, with arguments: [CVarArg]) -> String {
+    private func parsePluralForms(
+        _ string: String, with arguments: [CVarArg], locale: Locale = .current
+    ) -> String {
         // ICU plural parsing for patterns like:
         // {0, plural, one {I have # apple} other {I have # apples}}
         // {0, plural, one {Mám # jablko} few {Mám # jablka} other {Mám # jablek}}
@@ -91,31 +95,14 @@ public final class Tolgee {
             let argument = arguments[argumentIndex]
             let replacement: String
 
-            // Determine which form to use based on Czech plural rules
-            if let number = argument as? Int {
-                replacement = getCzechPluralForm(
-                    number: number, oneForm: oneForm, fewForm: fewForm, otherForm: otherForm)
-            } else if let number = argument as? Double {
-                // For non-integer doubles, use "other" form, for integer doubles use Czech rules
-                if number == floor(number) {
-                    replacement = getCzechPluralForm(
-                        number: Int(number), oneForm: oneForm, fewForm: fewForm,
-                        otherForm: otherForm)
-                } else {
-                    replacement = otherForm
-                }
-            } else if let number = argument as? Float {
-                // For non-integer floats, use "other" form, for integer floats use Czech rules
-                if number == floor(number) {
-                    replacement = getCzechPluralForm(
-                        number: Int(number), oneForm: oneForm, fewForm: fewForm,
-                        otherForm: otherForm)
-                } else {
-                    replacement = otherForm
-                }
-            } else {
-                replacement = otherForm  // Default to other for non-numeric types
-            }
+            // Use locale-aware plural rules
+            replacement = getPluralForm(
+                argument: argument,
+                oneForm: oneForm,
+                fewForm: fewForm,
+                otherForm: otherForm,
+                locale: locale
+            )
 
             // Replace # and format specifiers with the actual number in the selected form
             var finalReplacement = replacement.replacingOccurrences(of: "#", with: "\(argument)")
@@ -149,16 +136,14 @@ public final class Tolgee {
             let argument = arguments[argumentIndex]
             let replacement: String
 
-            // Determine if we should use singular or plural form
-            if let number = argument as? Int {
-                replacement = number == 1 ? singularForm : pluralForm
-            } else if let number = argument as? Double {
-                replacement = number == 1.0 ? singularForm : pluralForm
-            } else if let number = argument as? Float {
-                replacement = number == 1.0 ? singularForm : pluralForm
-            } else {
-                replacement = pluralForm  // Default to plural for non-numeric types
-            }
+            // Use locale-aware plural rules for two-form pattern
+            replacement = getPluralForm(
+                argument: argument,
+                oneForm: singularForm,
+                fewForm: nil as String?,
+                otherForm: pluralForm,
+                locale: locale
+            )
 
             // Replace # and format specifiers with the actual number in the selected form
             var finalReplacement = replacement.replacingOccurrences(of: "#", with: "\(argument)")
@@ -177,20 +162,121 @@ public final class Tolgee {
         return result
     }
 
-    private func getCzechPluralForm(
-        number: Int, oneForm: String, fewForm: String, otherForm: String
+    private func getPluralForm(
+        argument: CVarArg,
+        oneForm: String,
+        fewForm: String?,
+        otherForm: String,
+        locale: Locale
     ) -> String {
-        // Czech plural rules:
-        // one: 1
-        // few: 2, 3, 4
-        // other: 0, 5, 6, 7, ... and negative numbers
-        if number == 1 {
-            return oneForm
-        } else if number >= 2 && number <= 4 {
-            return fewForm
+        // Convert argument to a number for plural rule evaluation
+        let numericValue: Double
+
+        if let intValue = argument as? Int {
+            numericValue = Double(intValue)
+        } else if let doubleValue = argument as? Double {
+            numericValue = doubleValue
+        } else if let floatValue = argument as? Float {
+            numericValue = Double(floatValue)
         } else {
+            // Non-numeric arguments use "other" form
             return otherForm
         }
+
+        // Use NSNumber to leverage Foundation's plural rules
+        let number = NSNumber(value: numericValue)
+        let numberFormatter = NumberFormatter()
+        numberFormatter.locale = locale
+
+        // Get the plural rule for this locale and number
+        let pluralRule = getPluralRule(for: number, locale: locale)
+
+        switch pluralRule {
+        case .one:
+            return oneForm
+        case .few:
+            return fewForm ?? otherForm
+        case .other:
+            return otherForm
+        }
+    }
+
+    private enum PluralRule {
+        case one
+        case few
+        case other
+    }
+
+    private func getPluralRule(for number: NSNumber, locale: Locale) -> PluralRule {
+        let doubleValue = number.doubleValue
+        let intValue = number.intValue
+        let isInteger = doubleValue == Double(intValue)
+
+        // Get language code for locale-specific rules
+        let languageCode = locale.language.languageCode?.identifier ?? "en"
+
+        switch languageCode {
+        case "cs":  // Czech
+            return getCzechPluralRule(value: doubleValue, isInteger: isInteger)
+        case "sk":  // Slovak (similar to Czech)
+            return getCzechPluralRule(value: doubleValue, isInteger: isInteger)
+        case "pl":  // Polish
+            return getPolishPluralRule(value: doubleValue, isInteger: isInteger)
+        case "ru", "uk", "be":  // Russian, Ukrainian, Belarusian
+            return getSlavicPluralRule(value: doubleValue, isInteger: isInteger)
+        default:  // English and other languages (simple one/other)
+            return getSimplePluralRule(value: doubleValue)
+        }
+    }
+
+    private func getCzechPluralRule(value: Double, isInteger: Bool) -> PluralRule {
+        // Czech plural rules (CLDR):
+        // one: 1 (exactly 1, including 1.0)
+        // few: 2-4 (integers only, so 2.0, 3.0, 4.0 but not 2.1)
+        // other: 0, 5+, non-integers except x.0
+
+        if value == 1.0 {
+            return .one
+        } else if isInteger && value >= 2.0 && value <= 4.0 {
+            return .few
+        } else {
+            return .other
+        }
+    }
+
+    private func getPolishPluralRule(value: Double, isInteger: Bool) -> PluralRule {
+        // Polish plural rules (simplified)
+        if value == 1.0 {
+            return .one
+        } else if isInteger && value >= 2.0 && value <= 4.0 {
+            return .few
+        } else {
+            return .other
+        }
+    }
+
+    private func getSlavicPluralRule(value: Double, isInteger: Bool) -> PluralRule {
+        // Russian/Ukrainian/Belarusian rules (simplified)
+        if !isInteger {
+            return .other
+        }
+
+        let intValue = Int(value)
+        let mod10 = intValue % 10
+        let mod100 = intValue % 100
+
+        if intValue == 1 {
+            return .one
+        } else if mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14) {
+            return .few
+        } else {
+            return .other
+        }
+    }
+
+    private func getSimplePluralRule(value: Double) -> PluralRule {
+        // Simple English-style rules: 1 = one, everything else = other
+        return value == 1.0 ? .one : .other
     }
 
     public func translate(_ key: String, locale: Locale = .current) -> String {
@@ -208,7 +294,7 @@ public final class Tolgee {
     {
         // First try to get translation from loaded translations
         if let icuString = translations[key] {
-            return parseICUString(icuString, with: arguments)
+            return parseICUString(icuString, with: arguments, locale: locale)
         }
 
         // Fallback to NSLocalizedString
@@ -216,7 +302,7 @@ public final class Tolgee {
 
         // If we have arguments, try to format the string
         if !arguments.isEmpty {
-            return parseICUString(localizedString, with: arguments)
+            return parseICUString(localizedString, with: arguments, locale: locale)
         }
 
         return localizedString
