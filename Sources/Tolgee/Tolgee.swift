@@ -64,16 +64,79 @@ public final class Tolgee {
     }
 
     private func parsePluralForms(_ string: String, with arguments: [CVarArg]) -> String {
-        // Basic ICU plural parsing for patterns like:
+        // ICU plural parsing for patterns like:
         // {0, plural, one {I have # apple} other {I have # apples}}
-        let pluralRegex = /\{(\d+),\s*plural,\s*one\s*\{([^}]+)\}\s*other\s*\{([^}]+)\}\}/
+        // {0, plural, one {Mám # jablko} few {Mám # jablka} other {Mám # jablek}}
+
+        // First try to match the three-form pattern (one/few/other)
+        let threePluralRegex =
+            /\{(\d+),\s*plural,\s*one\s*\{([^}]+)\}\s*few\s*\{([^}]+)\}\s*other\s*\{([^}]+)\}\s*\}/
 
         var result = string
 
-        // Process matches in reverse order to avoid index shifting
-        let matches = Array(result.matches(of: pluralRegex)).reversed()
+        // Process three-form matches first
+        let threeFormMatches = Array(result.matches(of: threePluralRegex)).reversed()
 
-        for match in matches {
+        for match in threeFormMatches {
+            let fullMatch = match.0
+            let indexString = String(match.1)
+            let oneForm = String(match.2)
+            let fewForm = String(match.3)
+            let otherForm = String(match.4)
+
+            guard let argumentIndex = Int(indexString),
+                argumentIndex < arguments.count
+            else { continue }
+
+            let argument = arguments[argumentIndex]
+            let replacement: String
+
+            // Determine which form to use based on Czech plural rules
+            if let number = argument as? Int {
+                replacement = getCzechPluralForm(
+                    number: number, oneForm: oneForm, fewForm: fewForm, otherForm: otherForm)
+            } else if let number = argument as? Double {
+                // For non-integer doubles, use "other" form, for integer doubles use Czech rules
+                if number == floor(number) {
+                    replacement = getCzechPluralForm(
+                        number: Int(number), oneForm: oneForm, fewForm: fewForm,
+                        otherForm: otherForm)
+                } else {
+                    replacement = otherForm
+                }
+            } else if let number = argument as? Float {
+                // For non-integer floats, use "other" form, for integer floats use Czech rules
+                if number == floor(number) {
+                    replacement = getCzechPluralForm(
+                        number: Int(number), oneForm: oneForm, fewForm: fewForm,
+                        otherForm: otherForm)
+                } else {
+                    replacement = otherForm
+                }
+            } else {
+                replacement = otherForm  // Default to other for non-numeric types
+            }
+
+            // Replace # and format specifiers with the actual number in the selected form
+            var finalReplacement = replacement.replacingOccurrences(of: "#", with: "\(argument)")
+
+            // Also replace common format specifiers
+            finalReplacement = finalReplacement.replacingOccurrences(of: "%lf", with: "\(argument)")
+            finalReplacement = finalReplacement.replacingOccurrences(
+                of: "%lld", with: "\(argument)")
+            finalReplacement = finalReplacement.replacingOccurrences(of: "%@", with: "\(argument)")
+            finalReplacement = finalReplacement.replacingOccurrences(of: "%d", with: "\(argument)")
+            finalReplacement = finalReplacement.replacingOccurrences(of: "%i", with: "\(argument)")
+
+            result = result.replacingOccurrences(of: fullMatch, with: finalReplacement)
+        }
+
+        // Then handle two-form patterns (one/other) for backward compatibility
+        let twoPluralRegex = /\{(\d+),\s*plural,\s*one\s*\{([^}]+)\}\s*other\s*\{([^}]+)\}\}/
+
+        let twoFormMatches = Array(result.matches(of: twoPluralRegex)).reversed()
+
+        for match in twoFormMatches {
             let fullMatch = match.0
             let indexString = String(match.1)
             let singularForm = String(match.2)
@@ -97,13 +160,37 @@ public final class Tolgee {
                 replacement = pluralForm  // Default to plural for non-numeric types
             }
 
-            // Replace # with the actual number in the selected form
-            let finalReplacement = replacement.replacingOccurrences(of: "#", with: "\(argument)")
+            // Replace # and format specifiers with the actual number in the selected form
+            var finalReplacement = replacement.replacingOccurrences(of: "#", with: "\(argument)")
+
+            // Also replace common format specifiers
+            finalReplacement = finalReplacement.replacingOccurrences(of: "%lf", with: "\(argument)")
+            finalReplacement = finalReplacement.replacingOccurrences(
+                of: "%lld", with: "\(argument)")
+            finalReplacement = finalReplacement.replacingOccurrences(of: "%@", with: "\(argument)")
+            finalReplacement = finalReplacement.replacingOccurrences(of: "%d", with: "\(argument)")
+            finalReplacement = finalReplacement.replacingOccurrences(of: "%i", with: "\(argument)")
 
             result = result.replacingOccurrences(of: fullMatch, with: finalReplacement)
         }
 
         return result
+    }
+
+    private func getCzechPluralForm(
+        number: Int, oneForm: String, fewForm: String, otherForm: String
+    ) -> String {
+        // Czech plural rules:
+        // one: 1
+        // few: 2, 3, 4
+        // other: 0, 5, 6, 7, ... and negative numbers
+        if number == 1 {
+            return oneForm
+        } else if number >= 2 && number <= 4 {
+            return fewForm
+        } else {
+            return otherForm
+        }
     }
 
     public func translate(_ key: String, locale: Locale = .current) -> String {

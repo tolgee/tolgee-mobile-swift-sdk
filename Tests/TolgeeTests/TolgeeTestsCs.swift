@@ -44,9 +44,9 @@ struct TolgeeTestsCs {
         let oneApple = tolgee.translate("I have %lld apples", 1)
         #expect(oneApple == "Mám 1 jablko")
 
-        // Test Czech few form (2-4) - Note: Our current implementation doesn't handle "few", so it will use "other"
+        // Test Czech few form (2-4) - Now properly handled!
         let fewApples = tolgee.translate("I have %lld apples", 3)
-        #expect(fewApples == "Mám 3 jablek")  // Falls back to "other" since we don't parse "few"
+        #expect(fewApples == "Mám 3 jablka")
 
         // Test Czech plural form (5+)
         let manyApples = tolgee.translate("I have %lld apples", 5)
@@ -65,9 +65,13 @@ struct TolgeeTestsCs {
         let onePear = tolgee.translate("I have %lf pears", 1.0)
         #expect(onePear == "Mám 1.0 hrušku")
 
+        // Test Czech few form with double
+        let fewPears = tolgee.translate("I have %lf pears", 3.0)
+        #expect(fewPears == "Mám 3.0 hrušky")
+
         // Test Czech plural form with double
         let multiplePears = tolgee.translate("I have %lf pears", 2.5)
-        #expect(multiplePears == "Mám 2.5 hrušek")  // Falls back to "other" since we don't parse "few"
+        #expect(multiplePears == "Mám 2.5 hrušek")  // Non-integer should use "other"
 
         // Test zero (should use plural/other)
         let zeroPears = tolgee.translate("I have %lf pears", 0.0)

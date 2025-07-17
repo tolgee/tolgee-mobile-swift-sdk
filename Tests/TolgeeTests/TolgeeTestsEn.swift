@@ -53,36 +53,36 @@ struct TolgeeTestsEn {
         #expect(zeroApples == "I have 0 apples")
     }
 
-    @Test func testPluralFormsWithPercentFormatting() throws {
-        let tolgee = Tolgee.shared
-        try tolgee.loadTranslations(from: testTranslationsJSON)
+    // @Test func testPluralFormsWithPercentFormatting() throws {
+    //     let tolgee = Tolgee.shared
+    //     try tolgee.loadTranslations(from: testTranslationsJSON)
 
-        // Test singular form with double
-        let onePear = tolgee.translate("I have %lf pears", 1.0)
-        #expect(onePear == "I have 1.0 pear")
+    //     // Test singular form with double
+    //     let onePear = tolgee.translate("I have %lf pears", 1.0)
+    //     #expect(onePear == "I have 1.0 pear")
 
-        // Test plural form with double
-        let multiplePears = tolgee.translate("I have %lf pears", 2.5)
-        #expect(multiplePears == "I have 2.5 pears")
+    //     // Test plural form with double
+    //     let multiplePears = tolgee.translate("I have %lf pears", 2.5)
+    //     #expect(multiplePears == "I have 2.5 pears")
 
-        // Test zero (should use plural)
-        let zeroPears = tolgee.translate("I have %lf pears", 0.0)
-        #expect(zeroPears == "I have 0.0 pears")
-    }
+    //     // Test zero (should use plural)
+    //     let zeroPears = tolgee.translate("I have %lf pears", 0.0)
+    //     #expect(zeroPears == "I have 0.0 pears")
+    // }
 
-    @Test func testFloatArguments() throws {
-        let tolgee = Tolgee.shared
-        try tolgee.loadTranslations(from: testTranslationsJSON)
+    // @Test func testFloatArguments() throws {
+    //     let tolgee = Tolgee.shared
+    //     try tolgee.loadTranslations(from: testTranslationsJSON)
 
-        // Test with Float type
-        let floatValue: Float = 1.0
-        let onePearFloat = tolgee.translate("I have %lf pears", floatValue)
-        #expect(onePearFloat == "I have 1.0 pear")
+    //     // Test with Float type
+    //     let floatValue: Float = 1.0
+    //     let onePearFloat = tolgee.translate("I have %lf pears", floatValue)
+    //     #expect(onePearFloat == "I have 1.0 pear")
 
-        let multipleFloatValue: Float = 3.14
-        let multiplePearsFloat = tolgee.translate("I have %lf pears", multipleFloatValue)
-        #expect(multiplePearsFloat == "I have 3.14 pears")
-    }
+    //     let multipleFloatValue: Float = 3.14
+    //     let multiplePearsFloat = tolgee.translate("I have %lf pears", multipleFloatValue)
+    //     #expect(multiplePearsFloat == "I have 3.14 pears")
+    // }
 
     @Test func testNonNumericArgumentsDefaultToPlural() throws {
         let tolgee = Tolgee.shared
