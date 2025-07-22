@@ -1,5 +1,5 @@
+import CoreFoundation
 import Foundation
-import Synchronization
 
 public enum TolgeeError: Error {
     case invalidJSONString
@@ -10,31 +10,29 @@ public enum TolgeeError: Error {
 public final class Tolgee {
     public static let shared = Tolgee()
 
-    private var apiKey: String?
-    private var apiUrl: String?
     private var translations: [String: String] = [:]
+    private var cdnURL: URL?
 
     private init() {
         // Initialize Tolgee SDK
         // This is where you would set up your Tolgee configuration, e.g. API keys, languages, etc.
     }
 
-    public func initialize(apiUrl: String, apiKey: String) {
-        self.apiUrl = apiUrl
-        self.apiKey = apiKey
+    public func initialize(cdn: URL? = nil) {
+        cdnURL = cdn
     }
 
     public func fetch() {
 
     }
 
-    public func loadTranslations(from jsonData: Data) throws {
+    func loadTranslations(from jsonData: Data) throws {
         let decoder = JSONDecoder()
         let translations = try decoder.decode([String: String].self, from: jsonData)
         self.translations = translations
     }
 
-    public func loadTranslations(from jsonString: String) throws {
+    func loadTranslations(from jsonString: String) throws {
         guard let data = jsonString.data(using: .utf8) else {
             throw TolgeeError.invalidJSONString
         }
@@ -279,14 +277,15 @@ public final class Tolgee {
         return value == 1.0 ? .one : .other
     }
 
-    public func translate(_ key: String, locale: Locale = .current) -> String {
+    public func translate(
+        _ key: String, value: String? = nil, table: String? = nil, bundle: Bundle = .main
+    ) -> String {
         // First try to get translation from loaded translations
         if let icuString = translations[key] {
             return icuString
         }
 
-        // Fallback to NSLocalizedString
-        return NSLocalizedString(key, comment: "")
+        return bundle.localizedString(forKey: key, value: value, table: table)
     }
 
     public func translate(_ key: String, _ arguments: CVarArg..., locale: Locale = .current)
