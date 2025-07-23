@@ -7,8 +7,8 @@ let package = Package(
     name: "Tolgee",
     platforms: [
         .macOS(.v13),
-        .iOS(.v15),
-        .tvOS(.v15),
+        .iOS(.v16),
+        .tvOS(.v16),
         .watchOS(.v6),
     ],
     products: [

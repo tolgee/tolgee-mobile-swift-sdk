@@ -409,6 +409,46 @@ public final class Tolgee {
         return bundle.localizedString(forKey: key, value: value, table: table)
     }
 
+    @available(iOS 18.4, *)
+    @available(macOS 15.4, *)
+    public func translate(
+        _ key: String, value: String? = nil, table: String? = nil, bundle: Bundle = .main,
+        locale: Locale = .current
+    ) -> String {
+        // First try to get translation from loaded translations
+        if let icuString = translations[table ?? ""]?[key] {
+            return icuString
+        }
+
+        return bundle.localizedString(
+            forKey: key, value: value, table: table, localizations: [locale.language])
+    }
+
+    public func translate(
+        _ key: String, _ arguments: CVarArg..., table: String? = nil, bundle: Bundle = .main
+    )
+        -> String
+    {
+        let locale = Locale.current
+
+        // First try to get translation from loaded translations
+        if let icuString = translations[table ?? ""]?[key] {
+            return parseICUString(icuString, with: arguments, locale: locale)
+        }
+
+        // Fallback to NSLocalizedString
+        let localizedString = bundle.localizedString(forKey: key, value: nil, table: table)
+
+        // If we have arguments, try to format the string
+        if !arguments.isEmpty {
+            return parseICUString(localizedString, with: arguments, locale: locale)
+        }
+
+        return localizedString
+    }
+
+    @available(iOS 18.4, *)
+    @available(macOS 15.4, *)
     public func translate(
         _ key: String, _ arguments: CVarArg..., table: String? = nil, bundle: Bundle = .main,
         locale: Locale = .current
@@ -421,7 +461,8 @@ public final class Tolgee {
         }
 
         // Fallback to NSLocalizedString
-        let localizedString = NSLocalizedString(key, comment: "")
+        let localizedString = bundle.localizedString(
+            forKey: key, value: nil, table: table, localizations: [locale.language])
 
         // If we have arguments, try to format the string
         if !arguments.isEmpty {

@@ -8,15 +8,19 @@
 import SwiftUI
 
 public struct TolgeeText: View {
-    
+
     private let key: String
-    
+
     init(t key: String) {
         self.key = key
     }
-    
+
     public var body: some View {
-        Text(Tolgee.shared.translate(key))
+        if #available(macOS 15.4, iOS 18.4, *) {
+            Text(Tolgee.shared.translate(key, locale: .current))
+        } else {
+            Text(Tolgee.shared.translate(key))
+        }
     }
 }
 
@@ -24,4 +28,3 @@ public struct TolgeeText: View {
 public func TolgeeLocalizedStringKey(_ key: String) -> String {
     Tolgee.shared.translate(key)
 }
-    
