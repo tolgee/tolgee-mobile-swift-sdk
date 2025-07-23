@@ -10,15 +10,17 @@ public enum TolgeeError: Error {
 public final class Tolgee {
     public static let shared = Tolgee()
 
-    private var translations: [String: String] = [:]
+    // table - [key - value]
+    private var translations: [String: [String: String]] = [:]
     private var cdnURL: URL?
     private var isFetchingFromCdn = false
 
     // Cache configuration
     private let cacheFileName = "tolgee_translations.json"
     private let cacheDirectoryName = "TolgeeCache"
-    
+
     private var language: String?
+    private var tables: [String] = []
 
     private var cacheDirectory: URL? {
         guard
@@ -42,9 +44,10 @@ public final class Tolgee {
         loadCachedTranslations()
     }
 
-    public func initialize(cdn: URL? = nil, language: String) {
+    public func initialize(cdn: URL? = nil, language: String, tables: [String] = []) {
         cdnURL = cdn
         self.language = language
+        self.tables = tables
         fetch()
     }
 
@@ -57,8 +60,19 @@ public final class Tolgee {
 
         Task {
             do {
-                let data = try await URLSession.shared.data(from: cdnURL.appending(component: "\(language).json")).0
+                let data = try await URLSession.shared.data(
+                    from: cdnURL.appending(component: "\(language).json")
+                ).0
                 try loadTranslations(from: data)
+
+                // TODO: use task groups for fetching multiple tables in parallel, including the base one
+                for table in tables {
+                    let tableData = try await URLSession.shared.data(
+                        from: cdnURL.appending(component: "\(table)/\(language).json")
+                    ).0
+                    try loadTranslations(from: tableData, table: table)
+                }
+
                 // Cache the downloaded translations
                 cacheTranslations(data)
             } catch {
@@ -68,22 +82,17 @@ public final class Tolgee {
         }
     }
 
-    func loadTranslations(from jsonData: Data) throws {
+    func loadTranslations(from jsonData: Data, table: String = "") throws {
         let decoder = JSONDecoder()
         let translations = try decoder.decode([String: String].self, from: jsonData)
-        self.translations = translations
+        self.translations[table] = translations
     }
 
-    func loadTranslations(from jsonString: String) throws {
+    func loadTranslations(from jsonString: String, table: String = "") throws {
         guard let data = jsonString.data(using: .utf8) else {
             throw TolgeeError.invalidJSONString
         }
-        try loadTranslations(from: data)
-    }
-
-    public func loadTranslations(from url: URL) throws {
-        let data = try Data(contentsOf: url)
-        try loadTranslations(from: data)
+        try loadTranslations(from: data, table: table)
     }
 
     // MARK: - Caching Methods
@@ -393,7 +402,7 @@ public final class Tolgee {
         _ key: String, value: String? = nil, table: String? = nil, bundle: Bundle = .main
     ) -> String {
         // First try to get translation from loaded translations
-        if let icuString = translations[key] {
+        if let icuString = translations[table ?? ""]?[key] {
             return icuString
         }
 
@@ -407,7 +416,7 @@ public final class Tolgee {
         -> String
     {
         // First try to get translation from loaded translations
-        if let icuString = translations[key] {
+        if let icuString = translations[table ?? ""]?[key] {
             return parseICUString(icuString, with: arguments, locale: locale)
         }
 
