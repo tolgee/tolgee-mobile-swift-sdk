@@ -14,7 +14,7 @@ struct TolgeeTestsCDN {
             let tolgee = Tolgee.shared
 
             // Initialize with CDN URL
-            tolgee.initialize(cdn: cdnURL, language: "cs")
+            tolgee.initialize(cdn: cdnURL, language: "cs", tables: ["Localizable2"])
 
             // Give some time for the async fetch to complete
             try await Task.sleep(nanoseconds: 3_000_000_000)  // 3 seconds
