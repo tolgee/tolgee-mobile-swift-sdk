@@ -441,7 +441,7 @@ public final class Tolgee {
 
         // If we have arguments, try to format the string
         if !arguments.isEmpty {
-            return parseICUString(localizedString, with: arguments, locale: locale)
+            return String(format: localizedString, locale: locale, arguments: arguments)
         }
 
         return localizedString
@@ -466,7 +466,7 @@ public final class Tolgee {
 
         // If we have arguments, try to format the string
         if !arguments.isEmpty {
-            return parseICUString(localizedString, with: arguments, locale: locale)
+            return String(format: localizedString, locale: locale, arguments: arguments)
         }
 
         return localizedString

@@ -10,17 +10,31 @@ import SwiftUI
 public struct TolgeeText: View {
 
     private let key: String
+    private let tableName: String?
+    private let arguments: [CVarArg]
     @Environment(\.locale) private var locale
 
-    init(t key: String) {
+    public init(_ key: String, _ arguments: CVarArg..., tableName: String? = nil) {
         self.key = key
+        self.tableName = tableName
+        self.arguments = arguments
     }
 
     public var body: some View {
         if #available(macOS 15.4, iOS 18.4, *) {
-            Text(Tolgee.shared.translate(key, locale: locale))
+            if arguments.isEmpty {
+                Text(Tolgee.shared.translate(key, table: tableName, locale: locale))
+            } else {
+                Text(
+                    Tolgee.shared.translate(
+                        key, arguments.first!, table: tableName, locale: locale))
+            }
         } else {
-            Text(Tolgee.shared.translate(key))
+            if arguments.isEmpty {
+                Text(Tolgee.shared.translate(key, table: tableName))
+            } else {
+                Text(Tolgee.shared.translate(key, arguments.first!, table: tableName))
+            }
         }
     }
 }
