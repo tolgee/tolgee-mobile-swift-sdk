@@ -1,5 +1,6 @@
 import CoreFoundation
 import Foundation
+import OSLog
 
 public enum TolgeeError: Error {
     case invalidJSONString
@@ -21,6 +22,9 @@ public final class Tolgee {
 
     private var language: String?
     private var tables: [String] = []
+
+    // Logger for Tolgee operations
+    private let logger = Logger(subsystem: "com.tolgee.ios", category: "Tolgee")
 
     private var cacheDirectory: URL? {
         guard
@@ -59,25 +63,62 @@ public final class Tolgee {
         isFetchingFromCdn = true
 
         Task {
-            do {
-                let data = try await URLSession.shared.data(
-                    from: cdnURL.appending(component: "\(language).json")
-                ).0
-                try loadTranslations(from: data)
+            var baseData: Data?
 
-                // TODO: use task groups for fetching multiple tables in parallel, including the base one
-                for table in tables {
-                    let tableData = try await URLSession.shared.data(
-                        from: cdnURL.appending(component: "\(table)/\(language).json")
-                    ).0
-                    try loadTranslations(from: tableData, table: table)
+            // Use task group to fetch all translation files in parallel
+            await withTaskGroup(of: (String, Result<Data, Error>).self) { group in
+                // Add task for base language file
+                group.addTask {
+                    do {
+                        let data = try await URLSession.shared.data(
+                            from: cdnURL.appending(component: "\(language).json")
+                        ).0
+                        return ("", .success(data))  // Empty string indicates base table
+                    } catch {
+                        return ("", .failure(error))
+                    }
                 }
 
-                // Cache the downloaded translations
-                cacheTranslations(data)
-            } catch {
-                print("Error fetching translations: \(error)")
+                // Add tasks for each additional table
+                for table in tables {
+                    group.addTask {
+                        do {
+                            let data = try await URLSession.shared.data(
+                                from: cdnURL.appending(component: "\(table)/\(language).json")
+                            ).0
+                            return (table, .success(data))
+                        } catch {
+                            return (table, .failure(error))
+                        }
+                    }
+                }
+
+                // Process results as they complete
+                for await (table, result) in group {
+                    switch result {
+                    case .success(let data):
+                        do {
+                            try loadTranslations(from: data, table: table)
+
+                            // Keep base data for caching
+                            if table.isEmpty {
+                                baseData = data
+                            }
+                        } catch {
+                            logger.error(
+                                "Error loading translations for table '\(table)': \(error)")
+                        }
+                    case .failure(let error):
+                        logger.warning("Error fetching translations for table '\(table)': \(error)")
+                    }
+                }
             }
+
+            // Cache the base translation data
+            if let baseData = baseData {
+                cacheTranslations(baseData)
+            }
+
             isFetchingFromCdn = false
         }
     }
@@ -98,72 +139,72 @@ public final class Tolgee {
     // MARK: - Caching Methods
 
     private func loadCachedTranslations() {
-        // guard let cacheFileURL = cacheFileURL,
-        //     FileManager.default.fileExists(atPath: cacheFileURL.path)
-        // else {
-        //     return
-        // }
+        guard let cacheFileURL = cacheFileURL,
+            FileManager.default.fileExists(atPath: cacheFileURL.path)
+        else {
+            return
+        }
 
-        // do {
-        //     let data = try Data(contentsOf: cacheFileURL)
-        //     try loadTranslations(from: data)
-        //     print("Loaded cached translations from: \(cacheFileURL.path)")
-        // } catch {
-        //     print("Failed to load cached translations: \(error)")
-        // }
+        do {
+            let data = try Data(contentsOf: cacheFileURL)
+            try loadTranslations(from: data)
+            logger.info("Loaded cached translations from: \(cacheFileURL.path)")
+        } catch {
+            logger.error("Failed to load cached translations: \(error)")
+        }
     }
 
     private func cacheTranslations(_ data: Data) {
-        // guard let cacheDirectory = cacheDirectory,
-        //     let cacheFileURL = cacheFileURL
-        // else {
-        //     print("Failed to get cache directory")
-        //     return
-        // }
+        guard let cacheDirectory = cacheDirectory,
+            let cacheFileURL = cacheFileURL
+        else {
+            logger.error("Failed to get cache directory")
+            return
+        }
 
-        // do {
-        //     // Create cache directory if it doesn't exist
-        //     try FileManager.default.createDirectory(
-        //         at: cacheDirectory,
-        //         withIntermediateDirectories: true,
-        //         attributes: nil)
+        do {
+            // Create cache directory if it doesn't exist
+            try FileManager.default.createDirectory(
+                at: cacheDirectory,
+                withIntermediateDirectories: true,
+                attributes: nil)
 
-        //     // Write translations to cache file
-        //     try data.write(to: cacheFileURL)
+            // Write translations to cache file
+            try data.write(to: cacheFileURL)
 
-        //     // Store cache metadata
-        //     UserDefaults.standard.set(Date(), forKey: "TolgeeLastCacheDate")
+            // Store cache metadata
+            UserDefaults.standard.set(Date(), forKey: "TolgeeLastCacheDate")
 
-        //     print("Cached translations to: \(cacheFileURL.path)")
-        // } catch {
-        //     print("Failed to cache translations: \(error)")
-        // }
+            logger.info("Cached translations to: \(cacheFileURL.path)")
+        } catch {
+            logger.error("Failed to cache translations: \(error)")
+        }
     }
 
-    // public func clearCache() {
-    //     guard let cacheFileURL = cacheFileURL else { return }
+    public func clearCache() {
+        guard let cacheFileURL = cacheFileURL else { return }
 
-    //     do {
-    //         try FileManager.default.removeItem(at: cacheFileURL)
-    //         UserDefaults.standard.removeObject(forKey: "TolgeeLastCacheDate")
-    //         print("Translation cache cleared")
-    //     } catch {
-    //         print("Failed to clear cache: \(error)")
-    //     }
-    // }
+        do {
+            try FileManager.default.removeItem(at: cacheFileURL)
+            UserDefaults.standard.removeObject(forKey: "TolgeeLastCacheDate")
+            logger.info("Translation cache cleared")
+        } catch {
+            logger.error("Failed to clear cache: \(error)")
+        }
+    }
 
-    // public func getCacheInfo() -> (lastCached: Date?, cacheSize: Int?) {
-    //     let lastCached = UserDefaults.standard.object(forKey: "TolgeeLastCacheDate") as? Date
+    public func getCacheInfo() -> (lastCached: Date?, cacheSize: Int?) {
+        let lastCached = UserDefaults.standard.object(forKey: "TolgeeLastCacheDate") as? Date
 
-    //     guard let cacheFileURL = cacheFileURL,
-    //         let attributes = try? FileManager.default.attributesOfItem(atPath: cacheFileURL.path),
-    //         let fileSize = attributes[.size] as? Int
-    //     else {
-    //         return (lastCached, nil)
-    //     }
+        guard let cacheFileURL = cacheFileURL,
+            let attributes = try? FileManager.default.attributesOfItem(atPath: cacheFileURL.path),
+            let fileSize = attributes[.size] as? Int
+        else {
+            return (lastCached, nil)
+        }
 
-    //     return (lastCached, fileSize)
-    // }
+        return (lastCached, fileSize)
+    }
 
     private func parseICUString(
         _ icuString: String, with arguments: [CVarArg], locale: Locale = .current
