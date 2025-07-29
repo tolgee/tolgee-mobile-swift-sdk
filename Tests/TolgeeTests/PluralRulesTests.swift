@@ -780,4 +780,22 @@ struct PluralRulesTests {
                 rules.category(for: number) == .other, "Sinhala should return .other for \(number)")
         }
     }
+
+    @Test func testNegativeNumbers() throws {
+        // Negative numbers should always return .other for all languages
+        let locales = ["en", "cs", "pl", "ru", "fr", "de", "ja", "ar", "he"]
+        let negativeNumbers = [-1.0, -2.0, -5.0, -1.5, -100.0]
+
+        for localeId in locales {
+            let locale = Locale(identifier: localeId)
+            let rules = PluralRules.pluralRules(for: locale)
+
+            for number in negativeNumbers {
+                #expect(
+                    rules.category(for: number) == .other,
+                    "Language \(localeId) should return .other for negative number \(number)"
+                )
+            }
+        }
+    }
 }

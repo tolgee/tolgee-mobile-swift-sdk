@@ -17,6 +17,11 @@ public struct PluralRules {
     }
 
     public func category(for number: Double) -> PluralCategory {
+        // Negative numbers typically use "other" form in most languages
+        if number < 0 {
+            return .other
+        }
+
         let n = number
         let i = Int(abs(number))  // integer part
         let v = numberOfFractionalDigits(number)  // number of visible fraction digits

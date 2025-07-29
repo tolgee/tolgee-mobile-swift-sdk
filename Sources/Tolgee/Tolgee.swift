@@ -302,100 +302,18 @@ public final class Tolgee {
             return otherForm
         }
 
-        // Use NSNumber to leverage Foundation's plural rules
-        let number = NSNumber(value: numericValue)
-        let numberFormatter = NumberFormatter()
-        numberFormatter.locale = locale
+        // Use the comprehensive PluralRules system
+        let pluralRules = PluralRules.pluralRules(for: locale)
+        let category = pluralRules.category(for: numericValue)
 
-        // Get the plural rule for this locale and number
-        let pluralRule = getPluralRule(for: number, locale: locale)
-
-        switch pluralRule {
+        switch category {
         case .one:
             return oneForm
         case .few:
             return fewForm ?? otherForm
-        case .other:
+        case .zero, .two, .many, .other:
             return otherForm
         }
-    }
-
-    private enum PluralRule {
-        case one
-        case few
-        case other
-    }
-
-    private func getPluralRule(for number: NSNumber, locale: Locale) -> PluralRule {
-        let doubleValue = number.doubleValue
-        let intValue = number.intValue
-        let isInteger = doubleValue == Double(intValue)
-
-        // Get language code for locale-specific rules
-        let languageCode = locale.language.languageCode?.identifier ?? "en"
-
-        switch languageCode {
-        case "cs":  // Czech
-            return getCzechPluralRule(value: doubleValue, isInteger: isInteger)
-        case "sk":  // Slovak (similar to Czech)
-            return getCzechPluralRule(value: doubleValue, isInteger: isInteger)
-        case "pl":  // Polish
-            return getPolishPluralRule(value: doubleValue, isInteger: isInteger)
-        case "ru", "uk", "be":  // Russian, Ukrainian, Belarusian
-            return getSlavicPluralRule(value: doubleValue, isInteger: isInteger)
-        default:  // English and other languages (simple one/other)
-            return getSimplePluralRule(value: doubleValue)
-        }
-    }
-
-    private func getCzechPluralRule(value: Double, isInteger: Bool) -> PluralRule {
-        // Czech plural rules (CLDR):
-        // one: 1 (exactly 1, including 1.0)
-        // few: 2-4 (integers only, so 2.0, 3.0, 4.0 but not 2.1)
-        // other: 0, 5+, non-integers except x.0
-
-        if value == 1.0 {
-            return .one
-        } else if isInteger && value >= 2.0 && value <= 4.0 {
-            return .few
-        } else {
-            return .other
-        }
-    }
-
-    private func getPolishPluralRule(value: Double, isInteger: Bool) -> PluralRule {
-        // Polish plural rules (simplified)
-        if value == 1.0 {
-            return .one
-        } else if isInteger && value >= 2.0 && value <= 4.0 {
-            return .few
-        } else {
-            return .other
-        }
-    }
-
-    private func getSlavicPluralRule(value: Double, isInteger: Bool) -> PluralRule {
-        // Russian/Ukrainian/Belarusian rules (simplified)
-        if !isInteger {
-            return .other
-        }
-
-        let intValue = Int(value)
-        let mod10 = intValue % 10
-        let mod100 = intValue % 100
-
-        if intValue == 1 {
-            return .one
-        } else if mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14) {
-            return .few
-        } else {
-            return .other
-        }
-    }
-
-    private func getSimplePluralRule(value: Double) -> PluralRule {
-        // Simple English-style rules: 1 = one, everything else = other
-        return value == 1.0 ? .one : .other
     }
 
     public func translate(
@@ -436,7 +354,7 @@ public final class Tolgee {
             return parseICUString(icuString, with: arguments, locale: locale)
         }
 
-        // Fallback to NSLocalizedString
+        // Fallback to bundle.localizedString
         let localizedString = bundle.localizedString(forKey: key, value: nil, table: table)
 
         // If we have arguments, try to format the string
@@ -460,7 +378,7 @@ public final class Tolgee {
             return parseICUString(icuString, with: arguments, locale: locale)
         }
 
-        // Fallback to NSLocalizedString
+        // Fallback to bundle.localizedString
         let localizedString = bundle.localizedString(
             forKey: key, value: nil, table: table, localizations: [locale.language])
 
