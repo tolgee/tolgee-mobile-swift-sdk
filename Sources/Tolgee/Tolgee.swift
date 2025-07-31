@@ -9,8 +9,8 @@ public enum TolgeeError: Error {
 public final class Tolgee {
     public static let shared = Tolgee(urlSession: URLSession.shared, cache: FileCache())
 
-    // table - [key - value]
-    private var translations: [String: [String: String]] = [:]
+    // table - [key - TranslationEntry]
+    private var translations: [String: [String: TranslationEntry]] = [:]
     private var cdnURL: URL?
     private var isFetchingFromCdn = false
 
@@ -159,12 +159,38 @@ public final class Tolgee {
         }
     }
 
+    /// Load translations from JSON string (primarily for testing)
+    /// - Parameters:
+    ///   - jsonString: The JSON string containing translations
+    ///   - table: The table name for the translations (defaults to base table)
+    /// - Throws: Error if JSON parsing fails
+    public func loadTranslations(from jsonString: String, table: String = "") throws {
+        let translations = try JSONParser.loadTranslations(from: jsonString, table: table)
+        self.translations[table] = translations
+    }
+
+    /// Load translations from JSON data (primarily for testing)
+    /// - Parameters:
+    ///   - jsonData: The JSON data containing translations
+    ///   - table: The table name for the translations (defaults to base table)
+    /// - Throws: Error if JSON parsing fails
+    public func loadTranslations(from jsonData: Data, table: String = "") throws {
+        let translations = try JSONParser.loadTranslations(from: jsonData, table: table)
+        self.translations[table] = translations
+    }
+
     public func translate(
         _ key: String, value: String? = nil, table: String? = nil, bundle: Bundle = .main
     ) -> String {
         // First try to get translation from loaded translations
-        if let icuString = translations[table ?? ""]?[key] {
-            return icuString
+        if let translationEntry = translations[table ?? ""]?[key] {
+            switch translationEntry {
+            case .simple(let string):
+                return string
+            case .plural(let pluralVariants):
+                // For simple translation without arguments, return the "other" form
+                return pluralVariants.other
+            }
         }
 
         return bundle.localizedString(forKey: key, value: value, table: table)
@@ -177,8 +203,14 @@ public final class Tolgee {
         locale: Locale = .current
     ) -> String {
         // First try to get translation from loaded translations
-        if let icuString = translations[table ?? ""]?[key] {
-            return icuString
+        if let translationEntry = translations[table ?? ""]?[key] {
+            switch translationEntry {
+            case .simple(let string):
+                return string
+            case .plural(let pluralVariants):
+                // For simple translation without arguments, return the "other" form
+                return pluralVariants.other
+            }
         }
 
         return bundle.localizedString(
@@ -193,8 +225,8 @@ public final class Tolgee {
         let locale = Locale.current
 
         // First try to get translation from loaded translations
-        if let icuString = translations[table ?? ""]?[key] {
-            return JSONParser.parseICUString(icuString, with: arguments, locale: locale)
+        if let translationEntry = translations[table ?? ""]?[key] {
+            return JSONParser.formatTranslation(translationEntry, with: arguments, locale: locale)
         }
 
         // Fallback to bundle.localizedString
@@ -217,8 +249,8 @@ public final class Tolgee {
         -> String
     {
         // First try to get translation from loaded translations
-        if let icuString = translations[table ?? ""]?[key] {
-            return JSONParser.parseICUString(icuString, with: arguments, locale: locale)
+        if let translationEntry = translations[table ?? ""]?[key] {
+            return JSONParser.formatTranslation(translationEntry, with: arguments, locale: locale)
         }
 
         // Fallback to bundle.localizedString
