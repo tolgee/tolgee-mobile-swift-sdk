@@ -28,6 +28,9 @@ public final class Tolgee {
     // App lifecycle observer
     private let lifecycleObserver: AppLifecycleObserver
 
+    private(set) var isInitialized = false
+    private(set) var lastFetchDate: Date?
+
     /// Internal initializer for testing with custom URL session, cache, and lifecycle observer
     /// - Parameters:
     ///   - urlSession: Custom URL session for testing
@@ -57,6 +60,12 @@ public final class Tolgee {
     }
 
     public func initialize(cdn: URL? = nil, language: String, namespaces: Set<String> = []) {
+
+        guard !isInitialized else {
+            logger.warning("Tolgee is already initialized")
+            return
+        }
+
         cdnURL = cdn
         self.language = language
         self.namespaces = namespaces
@@ -91,6 +100,9 @@ public final class Tolgee {
                 )
             }
         }
+
+        isInitialized = true
+        logger.debug("Tolgee initialized with language: \(language), namespaces: \(namespaces)")
 
         fetch()
     }
@@ -156,6 +168,9 @@ public final class Tolgee {
             }
 
             isFetchingFromCdn = false
+            lastFetchDate = Date()
+            logger.debug(
+                "Translations fetched successfully at \(self.lastFetchDate ?? .distantPast)")
         }
     }
 
@@ -164,7 +179,7 @@ public final class Tolgee {
     ///   - jsonString: The JSON string containing translations
     ///   - table: The table name for the translations (defaults to base table)
     /// - Throws: Error if JSON parsing fails
-    public func loadTranslations(from jsonString: String, table: String = "") throws {
+    func loadTranslations(from jsonString: String, table: String = "") throws {
         let translations = try JSONParser.loadTranslations(from: jsonString, table: table)
         self.translations[table] = translations
     }
@@ -174,7 +189,7 @@ public final class Tolgee {
     ///   - jsonData: The JSON data containing translations
     ///   - table: The table name for the translations (defaults to base table)
     /// - Throws: Error if JSON parsing fails
-    public func loadTranslations(from jsonData: Data, table: String = "") throws {
+    func loadTranslations(from jsonData: Data, table: String = "") throws {
         let translations = try JSONParser.loadTranslations(from: jsonData, table: table)
         self.translations[table] = translations
     }
