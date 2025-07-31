@@ -5,7 +5,6 @@ public enum TolgeeError: Error {
     case invalidJSONString
     case translationNotFound
 }
-
 @MainActor
 public final class Tolgee {
     public static let shared = Tolgee(urlSession: URLSession.shared, cache: FileCache())
@@ -26,13 +25,35 @@ public final class Tolgee {
 
     private let cache: CacheProcotol
 
-    /// Internal initializer for testing with custom URL session and cache
+    // App lifecycle observer
+    private let lifecycleObserver: AppLifecycleObserver
+
+    /// Internal initializer for testing with custom URL session, cache, and lifecycle observer
     /// - Parameters:
     ///   - urlSession: Custom URL session for testing
     ///   - cache: Custom cache implementation for testing
-    internal init(urlSession: URLSessionProtocol, cache: CacheProcotol) {
+    ///   - lifecycleObserver: Custom lifecycle observer for testing
+    internal init(
+        urlSession: URLSessionProtocol, cache: CacheProcotol,
+        lifecycleObserver: AppLifecycleObserver = AppLifecycleObserver()
+    ) {
         self.fetchCdnService = FetchCdnService(urlSession: urlSession)
         self.cache = cache
+        self.lifecycleObserver = lifecycleObserver
+        setupForegroundObserver()
+    }
+
+    deinit {
+        lifecycleObserver.stopObserving(target: self)
+    }
+
+    private func setupForegroundObserver() {
+        lifecycleObserver.startObserving(target: self, selector: #selector(appWillEnterForeground))
+    }
+
+    @objc private func appWillEnterForeground() {
+        logger.debug("App entering foreground, triggering translation fetch")
+        fetch()
     }
 
     public func initialize(cdn: URL? = nil, language: String, namespaces: Set<String> = []) {
