@@ -5,6 +5,7 @@
 //  Created by Petr Pavlik on 23.07.2025.
 //
 
+import Foundation
 import SwiftUI
 
 public struct TolgeeText: View {
@@ -12,34 +13,25 @@ public struct TolgeeText: View {
     private let key: String
     private let tableName: String?
     private let arguments: [CVarArg]
+    private let bundle: Bundle
     @Environment(\.locale) private var locale
 
-    public init(_ key: String, _ arguments: CVarArg..., tableName: String? = nil) {
+    public init(
+        _ key: String, _ arguments: CVarArg..., tableName: String? = nil, bundle: Bundle = .main
+    ) {
         self.key = key
         self.tableName = tableName
         self.arguments = arguments
+        self.bundle = bundle
     }
 
     public var body: some View {
         if #available(macOS 15.4, iOS 18.4, *) {
-            if arguments.isEmpty {
-                Text(Tolgee.shared.translate(key, table: tableName, locale: locale))
-            } else {
-                Text(
-                    Tolgee.shared.translate(
-                        key, arguments.first!, table: tableName, locale: locale))
-            }
+            Text(
+                Tolgee.shared.translate(
+                    key, arguments, table: tableName, bundle: bundle, locale: locale))
         } else {
-            if arguments.isEmpty {
-                Text(Tolgee.shared.translate(key, table: tableName))
-            } else {
-                Text(Tolgee.shared.translate(key, arguments.first!, table: tableName))
-            }
+            Text(Tolgee.shared.translate(key, arguments, table: tableName, bundle: bundle))
         }
     }
-}
-
-@MainActor
-public func TolgeeLocalizedStringKey(_ key: String) -> String {
-    Tolgee.shared.translate(key)
 }

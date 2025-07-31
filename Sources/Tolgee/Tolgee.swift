@@ -9,12 +9,10 @@ public enum TolgeeError: Error {
 ///
 /// Tolgee provides a modern localization solution that supports:
 /// - Remote translation loading from CDN
-/// - ICU plural form handling for different languages
 /// - Namespace-based translation organization
 /// - Automatic caching and background updates
 /// - Fallback to bundle-based localizations
 /// - Automatic language detection from device settings
-/// - Manual language override for testing scenarios
 ///
 /// ## Quick Start
 /// ```swift
@@ -336,21 +334,11 @@ public final class Tolgee {
         }
     }
 
-    /// Load translations from JSON string (primarily for testing)
-    /// - Parameters:
-    ///   - jsonString: The JSON string containing translations
-    ///   - table: The table name for the translations (defaults to base table)
-    /// - Throws: Error if JSON parsing fails
     func loadTranslations(from jsonString: String, table: String = "") throws {
         let translations = try JSONParser.loadTranslations(from: jsonString, table: table)
         self.translations[table] = translations
     }
 
-    /// Load translations from JSON data (primarily for testing)
-    /// - Parameters:
-    ///   - jsonData: The JSON data containing translations
-    ///   - table: The table name for the translations (defaults to base table)
-    /// - Throws: Error if JSON parsing fails
     func loadTranslations(from jsonData: Data, table: String = "") throws {
         let translations = try JSONParser.loadTranslations(from: jsonData, table: table)
         self.translations[table] = translations
@@ -383,16 +371,6 @@ public final class Tolgee {
     /// // Translation from specific table
     /// let buttonText = tolgee.translate("save_button", table: "Buttons")
     /// ```
-    ///
-    /// ## ICU Plural Support
-    /// The method automatically handles ICU plural forms for different languages:
-    /// ```json
-    /// {
-    ///   "item_count": "{0, plural, one {# item} other {# items}}"
-    /// }
-    /// ```
-    ///
-    /// - Note: Uses the current device locale for plural rule evaluation
     public func translate(
         _ key: String, _ arguments: CVarArg..., table: String? = nil, bundle: Bundle = .main
     )
@@ -446,13 +424,6 @@ public final class Tolgee {
     /// let testLocale = Locale(identifier: "ja_JP")
     /// let japaneseText = tolgee.translate("welcome_message", locale: testLocale)
     /// ```
-    ///
-    /// ## Locale-Specific Plural Rules
-    /// Different languages have different plural rules. This method ensures the correct
-    /// plural form is selected based on the specified locale:
-    /// - English: one/other (1 item vs 2 items)
-    /// - Russian: one/few/many/other (1, 2-4, 5+, and other cases)
-    /// - Japanese: other only (no plural distinction)
     ///
     /// - Note: Available on iOS 18.4+ and macOS 15.4+ due to the enhanced bundle localization API
     @available(iOS 18.4, *)
