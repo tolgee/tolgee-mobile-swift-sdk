@@ -64,7 +64,8 @@ public final class Tolgee {
         if let data = cache.loadRecords(for: CacheDescriptor(language: language)) {
             do {
                 // Load cached translations
-                try loadTranslations(from: data)
+                let translations = try JSONParser.loadTranslations(from: data)
+                self.translations[""] = translations
             } catch {
                 logger.error("Failed to load cached translations: \(error)")
             }
@@ -78,7 +79,8 @@ public final class Tolgee {
             {
                 do {
                     // Load cached translations for each namespace
-                    try loadTranslations(from: data, table: namespace)
+                    let translations = try JSONParser.loadTranslations(from: data, table: namespace)
+                    self.translations[namespace] = translations
                 } catch {
                     logger.error(
                         "Failed to load cached translations for namespace '\(namespace)': \(error)")
@@ -126,7 +128,8 @@ public final class Tolgee {
                         table = String(filePath.prefix(while: { $0 != "/" }))
                     }
                     do {
-                        try loadTranslations(from: data, table: table)
+                        let translations = try JSONParser.loadTranslations(from: data, table: table)
+                        self.translations[table] = translations
 
                         // Cache the fetched data
                         let descriptor: CacheDescriptor
@@ -153,170 +156,6 @@ public final class Tolgee {
             }
 
             isFetchingFromCdn = false
-        }
-    }
-
-    func loadTranslations(from jsonData: Data, table: String = "") throws {
-        let decoder = JSONDecoder()
-        let translations = try decoder.decode([String: String].self, from: jsonData)
-        self.translations[table] = translations
-    }
-
-    func loadTranslations(from jsonString: String, table: String = "") throws {
-        guard let data = jsonString.data(using: .utf8) else {
-            throw TolgeeError.invalidJSONString
-        }
-        try loadTranslations(from: data, table: table)
-    }
-
-    private func parseICUString(
-        _ icuString: String, with arguments: [CVarArg], locale: Locale = .current
-    ) -> String {
-        var result = icuString
-
-        // Handle simple placeholder replacement {0}, {1}, etc.
-        for (index, argument) in arguments.enumerated() {
-            let placeholder = "{\(index)}"
-            if result.contains(placeholder) {
-                result = result.replacingOccurrences(of: placeholder, with: "\(argument)")
-            }
-        }
-
-        // Handle plural forms
-        result = parsePluralForms(result, with: arguments, locale: locale)
-
-        return result
-    }
-
-    private func parsePluralForms(
-        _ string: String, with arguments: [CVarArg], locale: Locale = .current
-    ) -> String {
-        // ICU plural parsing for patterns like:
-        // {0, plural, one {I have # apple} other {I have # apples}}
-        // {0, plural, one {Mám # jablko} few {Mám # jablka} other {Mám # jablek}}
-
-        // First try to match the three-form pattern (one/few/other)
-        let threePluralRegex =
-            /\{(\d+),\s*plural,\s*one\s*\{([^}]+)\}\s*few\s*\{([^}]+)\}\s*other\s*\{([^}]+)\}\s*\}/
-
-        var result = string
-
-        // Process three-form matches first
-        let threeFormMatches = Array(result.matches(of: threePluralRegex)).reversed()
-
-        for match in threeFormMatches {
-            let fullMatch = match.0
-            let indexString = String(match.1)
-            let oneForm = String(match.2)
-            let fewForm = String(match.3)
-            let otherForm = String(match.4)
-
-            guard let argumentIndex = Int(indexString),
-                argumentIndex < arguments.count
-            else { continue }
-
-            let argument = arguments[argumentIndex]
-            let replacement: String
-
-            // Use locale-aware plural rules
-            replacement = getPluralForm(
-                argument: argument,
-                oneForm: oneForm,
-                fewForm: fewForm,
-                otherForm: otherForm,
-                locale: locale
-            )
-
-            // Replace # and format specifiers with the actual number in the selected form
-            var finalReplacement = replacement.replacingOccurrences(of: "#", with: "\(argument)")
-
-            // Also replace common format specifiers
-            finalReplacement = finalReplacement.replacingOccurrences(of: "%lf", with: "\(argument)")
-            finalReplacement = finalReplacement.replacingOccurrences(
-                of: "%lld", with: "\(argument)")
-            finalReplacement = finalReplacement.replacingOccurrences(of: "%@", with: "\(argument)")
-            finalReplacement = finalReplacement.replacingOccurrences(of: "%d", with: "\(argument)")
-            finalReplacement = finalReplacement.replacingOccurrences(of: "%i", with: "\(argument)")
-
-            result = result.replacingOccurrences(of: fullMatch, with: finalReplacement)
-        }
-
-        // Then handle two-form patterns (one/other) for backward compatibility
-        let twoPluralRegex = /\{(\d+),\s*plural,\s*one\s*\{([^}]+)\}\s*other\s*\{([^}]+)\}\}/
-
-        let twoFormMatches = Array(result.matches(of: twoPluralRegex)).reversed()
-
-        for match in twoFormMatches {
-            let fullMatch = match.0
-            let indexString = String(match.1)
-            let singularForm = String(match.2)
-            let pluralForm = String(match.3)
-
-            guard let argumentIndex = Int(indexString),
-                argumentIndex < arguments.count
-            else { continue }
-
-            let argument = arguments[argumentIndex]
-            let replacement: String
-
-            // Use locale-aware plural rules for two-form pattern
-            replacement = getPluralForm(
-                argument: argument,
-                oneForm: singularForm,
-                fewForm: nil as String?,
-                otherForm: pluralForm,
-                locale: locale
-            )
-
-            // Replace # and format specifiers with the actual number in the selected form
-            var finalReplacement = replacement.replacingOccurrences(of: "#", with: "\(argument)")
-
-            // Also replace common format specifiers
-            finalReplacement = finalReplacement.replacingOccurrences(of: "%lf", with: "\(argument)")
-            finalReplacement = finalReplacement.replacingOccurrences(
-                of: "%lld", with: "\(argument)")
-            finalReplacement = finalReplacement.replacingOccurrences(of: "%@", with: "\(argument)")
-            finalReplacement = finalReplacement.replacingOccurrences(of: "%d", with: "\(argument)")
-            finalReplacement = finalReplacement.replacingOccurrences(of: "%i", with: "\(argument)")
-
-            result = result.replacingOccurrences(of: fullMatch, with: finalReplacement)
-        }
-
-        return result
-    }
-
-    private func getPluralForm(
-        argument: CVarArg,
-        oneForm: String,
-        fewForm: String?,
-        otherForm: String,
-        locale: Locale
-    ) -> String {
-        // Convert argument to a number for plural rule evaluation
-        let numericValue: Double
-
-        if let intValue = argument as? Int {
-            numericValue = Double(intValue)
-        } else if let doubleValue = argument as? Double {
-            numericValue = doubleValue
-        } else if let floatValue = argument as? Float {
-            numericValue = Double(floatValue)
-        } else {
-            // Non-numeric arguments use "other" form
-            return otherForm
-        }
-
-        // Use the comprehensive PluralRules system
-        let pluralRules = PluralRules.pluralRules(for: locale)
-        let category = pluralRules.category(for: numericValue)
-
-        switch category {
-        case .one:
-            return oneForm
-        case .few:
-            return fewForm ?? otherForm
-        case .zero, .two, .many, .other:
-            return otherForm
         }
     }
 
@@ -355,7 +194,7 @@ public final class Tolgee {
 
         // First try to get translation from loaded translations
         if let icuString = translations[table ?? ""]?[key] {
-            return parseICUString(icuString, with: arguments, locale: locale)
+            return JSONParser.parseICUString(icuString, with: arguments, locale: locale)
         }
 
         // Fallback to bundle.localizedString
@@ -379,7 +218,7 @@ public final class Tolgee {
     {
         // First try to get translation from loaded translations
         if let icuString = translations[table ?? ""]?[key] {
-            return parseICUString(icuString, with: arguments, locale: locale)
+            return JSONParser.parseICUString(icuString, with: arguments, locale: locale)
         }
 
         // Fallback to bundle.localizedString
