@@ -1,13 +1,13 @@
 import Foundation
 
 /// Represents a translation entry that can be either a simple string or have plural variants
-enum TranslationEntry {
+enum TranslationEntry: Equatable, Sendable {
     case simple(String)
     case plural(PluralVariants)
 }
 
 /// Contains pre-computed plural variants for different plural categories
-struct PluralVariants {
+struct PluralVariants: Equatable, Sendable {
     let one: String
     let few: String?
     let other: String

@@ -7,7 +7,7 @@ struct CacheDescriptor: Sendable, Hashable {
 
 protocol CacheProcotol: Sendable {
     func loadRecords(for descriptor: CacheDescriptor) -> Data?
-    func saveRecords(_ data: Data, for descriptor: CacheDescriptor)
+    func saveRecords(_ data: Data, for descriptor: CacheDescriptor) throws
 }
 
 final class FileCache: CacheProcotol {
@@ -53,25 +53,21 @@ final class FileCache: CacheProcotol {
         }
     }
 
-    func saveRecords(_ data: Data, for descriptor: CacheDescriptor) {
+    func saveRecords(_ data: Data, for descriptor: CacheDescriptor) throws {
         guard let cacheDirectory = cacheDirectory,
             let cacheFileURL = cacheFileURL(for: descriptor)
         else {
             return
         }
 
-        do {
-            // Create cache directory if it doesn't exist
-            try FileManager.default.createDirectory(
-                at: cacheDirectory,
-                withIntermediateDirectories: true,
-                attributes: nil
-            )
+        // Create cache directory if it doesn't exist
+        try FileManager.default.createDirectory(
+            at: cacheDirectory,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
 
-            // Write data to cache file
-            try data.write(to: cacheFileURL)
-        } catch {
-            // Silently fail for now
-        }
+        // Write data to cache file
+        try data.write(to: cacheFileURL)
     }
 }

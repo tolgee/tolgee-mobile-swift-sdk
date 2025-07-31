@@ -85,7 +85,7 @@ struct CacheTests {
         let testData = "test file data".data(using: .utf8)!
 
         // Save data
-        cache.saveRecords(testData, for: descriptor)
+        try cache.saveRecords(testData, for: descriptor)
 
         // Should be able to load it
         let loadedData = cache.loadRecords(for: descriptor)
@@ -101,8 +101,8 @@ struct CacheTests {
         let namespaceData = "namespace file data".data(using: .utf8)!
 
         // Save different data for base and namespace
-        cache.saveRecords(baseData, for: baseDescriptor)
-        cache.saveRecords(namespaceData, for: namespaceDescriptor)
+        try cache.saveRecords(baseData, for: baseDescriptor)
+        try cache.saveRecords(namespaceData, for: namespaceDescriptor)
 
         // Should load correct data for each
         let loadedBase = cache.loadRecords(for: baseDescriptor)
