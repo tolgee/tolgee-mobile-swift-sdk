@@ -114,7 +114,11 @@ public final class Tolgee {
                         } else {
                             descriptor = CacheDescriptor(language: language, namespace: table)
                         }
-                        cache.saveRecords(data, for: descriptor)
+
+                        // Save to cache on background thread to avoid blocking
+                        Task.detached {
+                            self.cache.saveRecords(data, for: descriptor)
+                        }
 
                         logger.debug(
                             "Cached translations for language: \(language), namespace: \(table.isEmpty ? "base" : table)"
