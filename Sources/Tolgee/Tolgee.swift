@@ -211,6 +211,9 @@ public final class Tolgee {
                 // Load cached translations
                 let translations = try JSONParser.loadTranslations(from: data)
                 self.translations[""] = translations
+                logger.debug(
+                    "Loaded cached translations for language: \(language) and base namespace"
+                )
             } catch {
                 logger.error("Failed to load cached translations: \(error)")
             }
@@ -226,6 +229,9 @@ public final class Tolgee {
                     // Load cached translations for each namespace
                     let translations = try JSONParser.loadTranslations(from: data, table: namespace)
                     self.translations[namespace] = translations
+                    logger.debug(
+                        "Loaded cached translations for language: \(language), namespace: \(namespace)"
+                    )
                 } catch {
                     logger.error(
                         "Failed to load cached translations for namespace '\(namespace)': \(error)")
@@ -253,6 +259,12 @@ public final class Tolgee {
 
         // TODO: do the decodecing after fetching on a background thread
         Task {
+
+            logger.debug(
+                String(
+                    "Fetching translations from CDN for language: \(language), namespaces: \(namespaces)"
+                ))
+
             do {
                 // Construct file paths for all translation files
                 var filePaths: [String] = ["\(language).json"]  // Base language file

@@ -11,11 +11,11 @@ final class TolgeeLog: Sendable {
 
     func debug(_ message: String) {
         if enableDebugLogs {
-            logger.debug("\(message)")
+            logger.debug("Tolgee: \(message)")
         }
     }
 
     func error(_ message: String) {
-        logger.error("\(message)")
+        logger.error("Tolgee: \(message)")
     }
 }
