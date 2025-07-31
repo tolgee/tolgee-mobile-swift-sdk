@@ -27,7 +27,7 @@ public final class Tolgee {
     private let logger = Logger(subsystem: "com.tolgee.ios", category: "Tolgee")
 
     // CDN fetching service
-    private let fetchCdnService = FetchCdnService()
+    private let fetchCdnService: FetchCdnService
 
     private var cacheDirectory: URL? {
         guard
@@ -46,7 +46,16 @@ public final class Tolgee {
     }
 
     private init() {
-        // Initialize Tolgee SDK
+        // Initialize with default URL session
+        self.fetchCdnService = FetchCdnService()
+        // Load cached translations first
+        loadCachedTranslations()
+    }
+
+    /// Internal initializer for testing with custom URL session
+    /// - Parameter urlSession: Custom URL session for testing
+    internal init(urlSession: URLSessionProtocol) {
+        self.fetchCdnService = FetchCdnService(urlSession: urlSession)
         // Load cached translations first
         loadCachedTranslations()
     }
@@ -74,7 +83,8 @@ public final class Tolgee {
                 }
 
                 // Use the FetchCdnService to get all translation data
-                let translationData = try await fetchCdnService.fetchFiles(
+                let fetchService = fetchCdnService
+                let translationData = try await fetchService.fetchFiles(
                     from: cdnURL,
                     filePaths: filePaths
                 )

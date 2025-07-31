@@ -1,9 +1,23 @@
 import Foundation
 import OSLog
 
+/// Protocol for URL session to enable mocking
+protocol URLSessionProtocol: Sendable {
+    func data(from url: URL) async throws -> (Data, URLResponse)
+}
+
+/// Extension to make URLSession conform to the protocol
+extension URLSession: URLSessionProtocol {}
+
 /// Service responsible for fetching translation files from CDN
-@MainActor
-public class FetchCdnService {
+final class FetchCdnService: Sendable {
+    private let urlSession: URLSessionProtocol
+
+    /// Initialize with a custom URL session (useful for testing)
+    /// - Parameter urlSession: The URL session to use for network requests
+    init(urlSession: URLSessionProtocol = URLSession.shared) {
+        self.urlSession = urlSession
+    }
 
     /// Fetches files from CDN in parallel
     /// - Parameters:
@@ -11,7 +25,7 @@ public class FetchCdnService {
     ///   - filePaths: List of file paths to download relative to the CDN URL
     /// - Returns: Dictionary of file paths to downloaded data
     /// - Throws: Error if any of the downloads fail
-    public func fetchFiles(
+    func fetchFiles(
         from cdnURL: URL,
         filePaths: [String]
     ) async throws -> [String: Data] {
@@ -21,8 +35,9 @@ public class FetchCdnService {
         try await withThrowingTaskGroup(of: (String, Data).self) { group in
             // Add tasks for each file path
             for filePath in filePaths {
+                let urlSession = self.urlSession
                 group.addTask {
-                    let data = try await URLSession.shared.data(
+                    let data = try await urlSession.data(
                         from: cdnURL.appending(component: filePath)
                     ).0
                     return (filePath, data)
