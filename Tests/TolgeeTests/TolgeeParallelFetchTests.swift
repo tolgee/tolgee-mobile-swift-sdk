@@ -12,7 +12,7 @@ struct TolgeeParallelFetchTests {
         let invalidURL = URL(string: "https://invalid-url-that-does-not-exist.test")!
 
         // This should not crash and should handle errors gracefully
-        await tolgee.initialize(cdn: invalidURL, language: "en", tables: ["table1", "table2"])
+        await tolgee.initialize(cdn: invalidURL, language: "en", namespaces: ["table1", "table2"])
 
         // Wait a bit for the async fetch to complete
         try await Task.sleep(for: .seconds(1))
@@ -30,7 +30,7 @@ struct TolgeeParallelFetchTests {
         let testURL = URL(string: "https://cdn.tolg.ee/test")!
 
         // This should handle the case where there are no additional tables
-        await tolgee.initialize(cdn: testURL, language: "en", tables: [])
+        await tolgee.initialize(cdn: testURL, language: "en")
 
         // Wait a bit for the async fetch to complete
         try await Task.sleep(for: .seconds(1))

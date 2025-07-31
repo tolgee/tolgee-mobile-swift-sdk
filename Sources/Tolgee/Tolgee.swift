@@ -1,4 +1,3 @@
-import CoreFoundation
 import Foundation
 import OSLog
 
@@ -9,19 +8,15 @@ public enum TolgeeError: Error {
 
 @MainActor
 public final class Tolgee {
-    public static let shared = Tolgee()
+    public static let shared = Tolgee(urlSession: URLSession.shared, cache: FileCache())
 
     // table - [key - value]
     private var translations: [String: [String: String]] = [:]
     private var cdnURL: URL?
     private var isFetchingFromCdn = false
 
-    // Cache configuration
-    private let cacheFileName = "tolgee_translations.json"
-    private let cacheDirectoryName = "TolgeeCache"
-
     private var language: String?
-    private var tables: [String] = []
+    private var namespaces: Set<String> = []
 
     // Logger for Tolgee operations
     private let logger = Logger(subsystem: "com.tolgee.ios", category: "Tolgee")
@@ -29,45 +24,55 @@ public final class Tolgee {
     // CDN fetching service
     private let fetchCdnService: FetchCdnService
 
-    private var cacheDirectory: URL? {
-        guard
-            let appSupportDir = FileManager.default.urls(
-                for: .applicationSupportDirectory,
-                in: .userDomainMask
-            ).first
-        else {
-            return nil
-        }
-        return appSupportDir.appendingPathComponent(cacheDirectoryName)
-    }
+    private let cache: CacheProcotol
 
-    private var cacheFileURL: URL? {
-        return cacheDirectory?.appendingPathComponent(cacheFileName)
-    }
-
-    private init() {
-        // Initialize with default URL session
-        self.fetchCdnService = FetchCdnService()
-        // Load cached translations first
-        loadCachedTranslations()
-    }
-
-    /// Internal initializer for testing with custom URL session
-    /// - Parameter urlSession: Custom URL session for testing
-    internal init(urlSession: URLSessionProtocol) {
+    /// Internal initializer for testing with custom URL session and cache
+    /// - Parameters:
+    ///   - urlSession: Custom URL session for testing
+    ///   - cache: Custom cache implementation for testing
+    internal init(urlSession: URLSessionProtocol, cache: CacheProcotol) {
         self.fetchCdnService = FetchCdnService(urlSession: urlSession)
-        // Load cached translations first
-        loadCachedTranslations()
+        self.cache = cache
     }
 
-    public func initialize(cdn: URL? = nil, language: String, tables: [String] = []) {
+    public func initialize(cdn: URL? = nil, language: String, namespaces: Set<String> = []) {
         cdnURL = cdn
         self.language = language
-        self.tables = tables
+        self.namespaces = namespaces
+
+        if let data = cache.loadRecords(for: CacheDescriptor(language: language)) {
+            do {
+                // Load cached translations
+                try loadTranslations(from: data)
+            } catch {
+                logger.error("Failed to load cached translations: \(error)")
+            }
+        } else {
+            logger.debug("No cached translations found for language: \(language)")
+        }
+
+        for namespace in namespaces {
+            if let data = cache.loadRecords(
+                for: CacheDescriptor(language: language, namespace: namespace))
+            {
+                do {
+                    // Load cached translations for each namespace
+                    try loadTranslations(from: data, table: namespace)
+                } catch {
+                    logger.error(
+                        "Failed to load cached translations for namespace '\(namespace)': \(error)")
+                }
+            } else {
+                logger.debug(
+                    "No cached translations found for language: \(language), namespace: \(namespace)"
+                )
+            }
+        }
+
         fetch()
     }
 
-    public func fetch() {
+    func fetch() {
         guard let cdnURL, let language, !isFetchingFromCdn, language.isEmpty == false else {
             return
         }
@@ -78,8 +83,8 @@ public final class Tolgee {
             do {
                 // Construct file paths for all translation files
                 var filePaths: [String] = ["\(language).json"]  // Base language file
-                for table in tables {
-                    filePaths.append("\(table)/\(language).json")  // Namespace files
+                for namespace in namespaces {
+                    filePaths.append("\(namespace)/\(language).json")  // Namespace files
                 }
 
                 // Use the FetchCdnService to get all translation data
@@ -88,8 +93,6 @@ public final class Tolgee {
                     from: cdnURL,
                     filePaths: filePaths
                 )
-
-                var baseData: Data?
 
                 // Process the fetched translation data
                 for (filePath, data) in translationData {
@@ -104,18 +107,21 @@ public final class Tolgee {
                     do {
                         try loadTranslations(from: data, table: table)
 
-                        // Keep base data for caching
+                        // Cache the fetched data
+                        let descriptor: CacheDescriptor
                         if table.isEmpty {
-                            baseData = data
+                            descriptor = CacheDescriptor(language: language)
+                        } else {
+                            descriptor = CacheDescriptor(language: language, namespace: table)
                         }
+                        cache.saveRecords(data, for: descriptor)
+
+                        logger.debug(
+                            "Cached translations for language: \(language), namespace: \(table.isEmpty ? "base" : table)"
+                        )
                     } catch {
                         logger.error("Error loading translations for table '\(table)': \(error)")
                     }
-                }
-
-                // Cache the base translation data
-                if let baseData = baseData {
-                    cacheTranslations(baseData)
                 }
             } catch {
                 logger.error("Failed to fetch translations from CDN: \(error)")
@@ -136,76 +142,6 @@ public final class Tolgee {
             throw TolgeeError.invalidJSONString
         }
         try loadTranslations(from: data, table: table)
-    }
-
-    // MARK: - Caching Methods
-
-    private func loadCachedTranslations() {
-        guard let cacheFileURL = cacheFileURL,
-            FileManager.default.fileExists(atPath: cacheFileURL.path)
-        else {
-            return
-        }
-
-        do {
-            let data = try Data(contentsOf: cacheFileURL)
-            try loadTranslations(from: data)
-            logger.info("Loaded cached translations from: \(cacheFileURL.path)")
-        } catch {
-            logger.error("Failed to load cached translations: \(error)")
-        }
-    }
-
-    private func cacheTranslations(_ data: Data) {
-        guard let cacheDirectory = cacheDirectory,
-            let cacheFileURL = cacheFileURL
-        else {
-            logger.error("Failed to get cache directory")
-            return
-        }
-
-        do {
-            // Create cache directory if it doesn't exist
-            try FileManager.default.createDirectory(
-                at: cacheDirectory,
-                withIntermediateDirectories: true,
-                attributes: nil)
-
-            // Write translations to cache file
-            try data.write(to: cacheFileURL)
-
-            // Store cache metadata
-            UserDefaults.standard.set(Date(), forKey: "TolgeeLastCacheDate")
-
-            logger.info("Cached translations to: \(cacheFileURL.path)")
-        } catch {
-            logger.error("Failed to cache translations: \(error)")
-        }
-    }
-
-    public func clearCache() {
-        guard let cacheFileURL = cacheFileURL else { return }
-
-        do {
-            try FileManager.default.removeItem(at: cacheFileURL)
-            UserDefaults.standard.removeObject(forKey: "TolgeeLastCacheDate")
-            logger.info("Translation cache cleared")
-        } catch {
-            logger.error("Failed to clear cache: \(error)")
-        }
-    }
-
-    public func getCacheInfo() -> (lastCached: Date?, cacheSize: Int?) {
-        let lastCached = UserDefaults.standard.object(forKey: "TolgeeLastCacheDate") as? Date
-
-        guard let cacheFileURL = cacheFileURL,
-            let attributes = try? FileManager.default.attributesOfItem(atPath: cacheFileURL.path),
-            let fileSize = attributes[.size] as? Int
-        else {
-            return (lastCached, nil)
-        }
-
-        return (lastCached, fileSize)
     }
 
     private func parseICUString(
