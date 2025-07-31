@@ -26,6 +26,9 @@ public final class Tolgee {
     // Logger for Tolgee operations
     private let logger = Logger(subsystem: "com.tolgee.ios", category: "Tolgee")
 
+    // CDN fetching service
+    private let fetchCdnService = FetchCdnService()
+
     private var cacheDirectory: URL? {
         guard
             let appSupportDir = FileManager.default.urls(
@@ -63,60 +66,49 @@ public final class Tolgee {
         isFetchingFromCdn = true
 
         Task {
-            var baseData: Data?
-
-            // Use task group to fetch all translation files in parallel
-            await withTaskGroup(of: (String, Result<Data, Error>).self) { group in
-                // Add task for base language file
-                group.addTask {
-                    do {
-                        let data = try await URLSession.shared.data(
-                            from: cdnURL.appending(component: "\(language).json")
-                        ).0
-                        return ("", .success(data))  // Empty string indicates base table
-                    } catch {
-                        return ("", .failure(error))
-                    }
-                }
-
-                // Add tasks for each additional table
+            do {
+                // Construct file paths for all translation files
+                var filePaths: [String] = ["\(language).json"]  // Base language file
                 for table in tables {
-                    group.addTask {
-                        do {
-                            let data = try await URLSession.shared.data(
-                                from: cdnURL.appending(component: "\(table)/\(language).json")
-                            ).0
-                            return (table, .success(data))
-                        } catch {
-                            return (table, .failure(error))
+                    filePaths.append("\(table)/\(language).json")  // Namespace files
+                }
+
+                // Use the FetchCdnService to get all translation data
+                let translationData = try await fetchCdnService.fetchFiles(
+                    from: cdnURL,
+                    filePaths: filePaths
+                )
+
+                var baseData: Data?
+
+                // Process the fetched translation data
+                for (filePath, data) in translationData {
+                    // Determine the table name from the file path
+                    let table: String
+                    if filePath == "\(language).json" {
+                        table = ""  // Base table
+                    } else {
+                        // Extract table name from "table/language.json" format
+                        table = String(filePath.prefix(while: { $0 != "/" }))
+                    }
+                    do {
+                        try loadTranslations(from: data, table: table)
+
+                        // Keep base data for caching
+                        if table.isEmpty {
+                            baseData = data
                         }
+                    } catch {
+                        logger.error("Error loading translations for table '\(table)': \(error)")
                     }
                 }
 
-                // Process results as they complete
-                for await (table, result) in group {
-                    switch result {
-                    case .success(let data):
-                        do {
-                            try loadTranslations(from: data, table: table)
-
-                            // Keep base data for caching
-                            if table.isEmpty {
-                                baseData = data
-                            }
-                        } catch {
-                            logger.error(
-                                "Error loading translations for table '\(table)': \(error)")
-                        }
-                    case .failure(let error):
-                        logger.warning("Error fetching translations for table '\(table)': \(error)")
-                    }
+                // Cache the base translation data
+                if let baseData = baseData {
+                    cacheTranslations(baseData)
                 }
-            }
-
-            // Cache the base translation data
-            if let baseData = baseData {
-                cacheTranslations(baseData)
+            } catch {
+                logger.error("Failed to fetch translations from CDN: \(error)")
             }
 
             isFetchingFromCdn = false
