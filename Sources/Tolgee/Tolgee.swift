@@ -1,5 +1,4 @@
 import Foundation
-import OSLog
 
 public enum TolgeeError: Error {
     case invalidJSONString
@@ -23,21 +22,10 @@ public enum TolgeeError: Error {
 ///     cdn: URL(string: "https://cdn.tolgee.io/your-project-id")!
 /// )
 ///
-/// // Manual language for testing
-/// Tolgee.shared.initialize(
-///     cdn: URL(string: "https://cdn.tolgee.io/your-project-id")!,
-///     language: "en"
-/// )
-///
 /// // Use translations in your app
 /// let greeting = Tolgee.shared.translate("hello_world")
 /// let personalGreeting = Tolgee.shared.translate("hello_name", "Alice")
 /// ```
-///
-/// ## Language Detection
-/// By default, Tolgee automatically detects the user's preferred language from their device
-/// settings, providing an optimal user experience. You can override this behavior by explicitly
-/// specifying a language, which is particularly useful for testing different localizations.
 @MainActor
 public final class Tolgee {
     /// Shared singleton instance of Tolgee for convenient access throughout your app.
@@ -67,18 +55,24 @@ public final class Tolgee {
     private var namespaces: Set<String> = []
 
     // Logger for Tolgee operations
-    private let logger = Logger(subsystem: "com.tolgee.ios", category: "Tolgee")
+    private let logger = TolgeeLog()
 
-    // CDN fetching service
     private let fetchCdnService: FetchCdnService
-
     private let cache: CacheProcotol
-
-    // App lifecycle observer
     private let lifecycleObserver: AppLifecycleObserverProtocol
 
-    private(set) var isInitialized = false
-    private(set) var lastFetchDate: Date?
+    /// Indicates whether the Tolgee SDK has been initialized.
+    ///
+    /// This property becomes `true` after the first successful call to `initialize(cdn:language:namespaces:)`.
+    /// Subsequent initialization attempts will be ignored while this remains `true`.
+    private(set) public var isInitialized = false
+
+    /// The timestamp of the last successful translation fetch from the CDN.
+    ///
+    /// This property is `nil` until the first successful CDN fetch completes. It's updated
+    /// each time translations are successfully retrieved from the remote CDN, regardless
+    /// of whether the translations actually changed.
+    private(set) public var lastFetchDate: Date?
 
     /// Internal initializer for testing with custom URL session, cache, and lifecycle observer
     /// - Parameters:
@@ -178,12 +172,17 @@ public final class Tolgee {
     ///
     /// - Note: For production apps, omit the `language` parameter to provide the best user experience.
     ///   Use explicit `language` values primarily for testing specific language scenarios.
-    public func initialize(cdn: URL? = nil, language: String? = nil, namespaces: Set<String> = []) {
+    public func initialize(
+        cdn: URL? = nil, language: String? = nil, namespaces: Set<String> = [],
+        enableDebugLogs: Bool = false
+    ) {
 
         guard !isInitialized else {
-            logger.warning("Tolgee is already initialized")
+            logger.error("Tolgee is already initialized")
             return
         }
+
+        logger.enableDebugLogs = enableDebugLogs
 
         let language = language ?? getPreferredLanguage()
 
@@ -235,6 +234,7 @@ public final class Tolgee {
 
         isFetchingFromCdn = true
 
+        // TODO: do the decodecing after fetching on a background thread
         Task {
             do {
                 // Construct file paths for all translation files
