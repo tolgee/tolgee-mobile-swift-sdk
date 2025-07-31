@@ -11,19 +11,19 @@ struct CacheTests {
         let testData = "test data".data(using: .utf8)!
 
         // Initially should be empty
-        #expect(await cache.loadRecords(for: descriptor) == nil)
-        #expect(await !cache.contains(descriptor))
+        #expect(cache.loadRecords(for: descriptor) == nil)
+        #expect(!cache.contains(descriptor))
 
         // Save data
-        await cache.saveRecords(testData, for: descriptor)
+        cache.saveRecords(testData, for: descriptor)
 
         // Should now contain the data
-        #expect(await cache.contains(descriptor))
-        let loadedData = await cache.loadRecords(for: descriptor)
+        #expect(cache.contains(descriptor))
+        let loadedData = cache.loadRecords(for: descriptor)
         #expect(loadedData == testData)
 
         // Should appear in cached descriptors
-        let descriptors = await cache.cachedDescriptors
+        let descriptors = cache.cachedDescriptors
         #expect(descriptors.contains(descriptor))
     }
 
@@ -36,12 +36,12 @@ struct CacheTests {
         let namespaceData = "namespace data".data(using: .utf8)!
 
         // Save different data for base and namespace
-        await cache.saveRecords(baseData, for: baseDescriptor)
-        await cache.saveRecords(namespaceData, for: namespaceDescriptor)
+        cache.saveRecords(baseData, for: baseDescriptor)
+        cache.saveRecords(namespaceData, for: namespaceDescriptor)
 
         // Should load correct data for each
-        let loadedBase = await cache.loadRecords(for: baseDescriptor)
-        let loadedNamespace = await cache.loadRecords(for: namespaceDescriptor)
+        let loadedBase = cache.loadRecords(for: baseDescriptor)
+        let loadedNamespace = cache.loadRecords(for: namespaceDescriptor)
 
         #expect(loadedBase == baseData)
         #expect(loadedNamespace == namespaceData)
@@ -54,10 +54,10 @@ struct CacheTests {
         let testData = "preloaded data".data(using: .utf8)!
 
         // Preload data
-        await cache.preload(testData, for: descriptor)
+        cache.preload(testData, for: descriptor)
 
         // Should be able to load it
-        let loadedData = await cache.loadRecords(for: descriptor)
+        let loadedData = cache.loadRecords(for: descriptor)
         #expect(loadedData == testData)
     }
 
@@ -67,16 +67,16 @@ struct CacheTests {
         let testData = "test data".data(using: .utf8)!
 
         // Save data
-        await cache.saveRecords(testData, for: descriptor)
-        #expect(await cache.contains(descriptor))
+        cache.saveRecords(testData, for: descriptor)
+        #expect(cache.contains(descriptor))
 
         // Clear cache
-        await cache.clear()
+        cache.clear()
 
         // Should be empty
-        #expect(await !cache.contains(descriptor))
-        #expect(await cache.loadRecords(for: descriptor) == nil)
-        #expect(await cache.cachedDescriptors.isEmpty)
+        #expect(!cache.contains(descriptor))
+        #expect(cache.loadRecords(for: descriptor) == nil)
+        #expect(cache.cachedDescriptors.isEmpty)
     }
 
     @Test func testFileCacheBasicOperations() throws {

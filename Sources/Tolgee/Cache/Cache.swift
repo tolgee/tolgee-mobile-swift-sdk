@@ -1,6 +1,6 @@
 import Foundation
 
-struct CacheDescriptor: Sendable {
+struct CacheDescriptor: Sendable, Hashable {
     var language: String
     var namespace: String?
 }
