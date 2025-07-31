@@ -1,0 +1,5 @@
+- [ ] add a callback when the data is updated
+- [ ] Create some SwiftUI hook that will auto rerender
+- [ ] Add a hook for analytics events?
+- [ ] allow configuring whether to produce debug logs
+- [ ] Swizzle NSLocalizedString?
