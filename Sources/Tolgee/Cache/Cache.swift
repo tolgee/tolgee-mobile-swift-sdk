@@ -12,7 +12,6 @@ protocol CacheProcotol: Sendable {
 
 final class FileCache: CacheProcotol {
     private let cacheDirectoryName = "TolgeeCache"
-    private let cacheFileName = "tolgee_translations.json"
 
     private var cacheDirectory: URL? {
         guard

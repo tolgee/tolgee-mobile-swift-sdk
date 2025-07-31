@@ -14,15 +14,16 @@ public enum TolgeeError: Error {
 /// - Automatic caching and background updates
 /// - Fallback to bundle-based localizations
 /// - Automatic language detection from device settings
+/// - Manual language override for testing scenarios
 ///
 /// ## Quick Start
 /// ```swift
-/// // Automatic language detection (recommended)
+/// // Automatic language detection (recommended for production)
 /// Tolgee.shared.initialize(
 ///     cdn: URL(string: "https://cdn.tolgee.io/your-project-id")!
 /// )
 ///
-/// // Manual language specification (useful for testing)
+/// // Manual language for testing
 /// Tolgee.shared.initialize(
 ///     cdn: URL(string: "https://cdn.tolgee.io/your-project-id")!,
 ///     language: "en"
@@ -32,6 +33,11 @@ public enum TolgeeError: Error {
 /// let greeting = Tolgee.shared.translate("hello_world")
 /// let personalGreeting = Tolgee.shared.translate("hello_name", "Alice")
 /// ```
+///
+/// ## Language Detection
+/// By default, Tolgee automatically detects the user's preferred language from their device
+/// settings, providing an optimal user experience. You can override this behavior by explicitly
+/// specifying a language, which is particularly useful for testing different localizations.
 @MainActor
 public final class Tolgee {
     /// Shared singleton instance of Tolgee for convenient access throughout your app.
@@ -41,10 +47,10 @@ public final class Tolgee {
     ///
     /// ## Usage
     /// ```swift
-    /// // Initialize with automatic language detection
+    /// // Initialize with automatic language detection (production)
     /// Tolgee.shared.initialize()
     ///
-    /// // Or initialize with specific language for testing
+    /// // Initialize with specific language (testing)
     /// Tolgee.shared.initialize(language: "en")
     ///
     /// // Use translations
@@ -119,62 +125,35 @@ public final class Tolgee {
         return languageCode
     }
 
-    /// Initializes the Tolgee SDK with automatic language detection.
+    /// Initializes the Tolgee SDK with automatic language detection or manual override.
     ///
-    /// This method automatically detects the device's preferred language and uses it
-    /// for translations. It's the recommended initialization method for production apps
-    /// as it provides the best user experience by using the language the user has
-    /// configured on their device.
+    /// This method provides flexible initialization options:
+    /// - **Automatic language detection** (recommended): When `language` is `nil`, automatically detects
+    ///   the user's preferred language from device settings
+    /// - **Manual language specification**: When `language` is provided, uses that specific language
+    ///   regardless of device settings (useful for testing)
+    ///
+    /// The method loads cached translations immediately if available and initiates a background
+    /// fetch for fresh translations from the CDN.
     ///
     /// - Parameters:
     ///   - cdn: The base URL of the Tolgee CDN where translation files are hosted (optional)
+    ///   - language: The target language code (e.g., "en", "es", "cs"). If `nil`, automatically detects from device settings (optional)
     ///   - namespaces: A set of namespace identifiers for organizing translations into logical groups (defaults to empty set)
     ///
     /// ## Usage
     /// ```swift
-    /// // Basic initialization with automatic language detection
+    /// // Automatic language detection (recommended for production)
     /// Tolgee.shared.initialize()
     ///
-    /// // Initialize with CDN and namespaces (automatic language)
+    /// // Automatic detection with CDN
     /// let cdnURL = URL(string: "https://cdn.tolgee.io/your-project-id")!
-    /// Tolgee.shared.initialize(
-    ///     cdn: cdnURL,
-    ///     namespaces: ["buttons", "messages", "errors"]
-    /// )
-    /// ```
+    /// Tolgee.shared.initialize(cdn: cdnURL)
     ///
-    /// ## Behavior
-    /// - Automatically detects device's preferred language
-    /// - Loads cached translations immediately if available
-    /// - Initiates background fetch for fresh translations from CDN
-    /// - Prevents multiple initializations (subsequent calls are ignored)
-    /// - Sets up automatic translation refresh when app enters foreground
-    ///
-    /// - Note: For testing with specific languages, use `initialize(cdn:language:namespaces:)` instead
-    public func initialize(cdn: URL? = nil, namespaces: Set<String> = []) {
-        let detectedLanguage = getPreferredLanguage()
-        initialize(cdn: cdn, language: detectedLanguage, namespaces: namespaces)
-    }
-
-    /// Initializes the Tolgee SDK with a manually specified language.
-    ///
-    /// This method allows you to specify a particular language code, which is useful
-    /// for testing, debugging, or when you want to override the device's language
-    /// settings. For production apps, consider using `initialize(cdn:namespaces:)`
-    /// which automatically detects the user's preferred language.
-    ///
-    /// - Parameters:
-    ///   - cdn: The base URL of the Tolgee CDN where translation files are hosted (optional)
-    ///   - language: The target language code (e.g., "en", "es", "cs") for translations
-    ///   - namespaces: A set of namespace identifiers for organizing translations into logical groups (defaults to empty set)
-    ///
-    /// ## Usage
-    /// ```swift
     /// // Manual language specification (useful for testing)
     /// Tolgee.shared.initialize(language: "en")
     ///
-    /// // Initialize with CDN and specific language
-    /// let cdnURL = URL(string: "https://cdn.tolgee.io/your-project-id")!
+    /// // Full configuration with CDN, language, and namespaces
     /// Tolgee.shared.initialize(
     ///     cdn: cdnURL,
     ///     language: "es",
@@ -182,20 +161,31 @@ public final class Tolgee {
     /// )
     /// ```
     ///
-    /// ## Behavior
-    /// - Uses the specified language regardless of device settings
-    /// - Loads cached translations immediately if available
-    /// - Initiates background fetch for fresh translations from CDN
-    /// - Prevents multiple initializations (subsequent calls are ignored)
-    /// - Sets up automatic translation refresh when app enters foreground
+    /// ## Language Detection
+    /// When `language` is `nil`, the method:
+    /// - Reads the user's preferred language from `Locale.preferredLanguages`
+    /// - Extracts the language code (e.g., "es" from "es-ES")
+    /// - Provides debug logging to show detected language
+    /// - Falls back to "en" if detection fails
     ///
-    /// - Note: This method is particularly useful for testing specific language scenarios
-    public func initialize(cdn: URL? = nil, language: String, namespaces: Set<String> = []) {
+    /// ## Behavior
+    /// - **Automatic language**: Respects user's device language settings
+    /// - **Manual language**: Uses specified language regardless of device settings
+    /// - **Caching**: Loads cached translations immediately if available
+    /// - **Background fetch**: Initiates CDN fetch for fresh translations
+    /// - **Initialization guard**: Prevents multiple initializations (subsequent calls are ignored)
+    /// - **Lifecycle management**: Sets up automatic refresh when app enters foreground
+    ///
+    /// - Note: For production apps, omit the `language` parameter to provide the best user experience.
+    ///   Use explicit `language` values primarily for testing specific language scenarios.
+    public func initialize(cdn: URL? = nil, language: String? = nil, namespaces: Set<String> = []) {
 
         guard !isInitialized else {
             logger.warning("Tolgee is already initialized")
             return
         }
+
+        let language = language ?? getPreferredLanguage()
 
         cdnURL = cdn
         self.language = language
