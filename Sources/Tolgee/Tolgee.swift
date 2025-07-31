@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 public enum TolgeeError: Error {
@@ -73,6 +74,21 @@ public final class Tolgee {
     /// each time translations are successfully retrieved from the remote CDN, regardless
     /// of whether the translations actually changed.
     private(set) public var lastFetchDate: Date?
+
+    private let onInitializedSubject = PassthroughSubject<Void, Never>()
+    private let onTranslationsUpdatedSubject = PassthroughSubject<Void, Never>()
+
+    public var onInitialized: AnyPublisher<Void, Never> {
+        onInitializedSubject.eraseToAnyPublisher()
+    }
+
+    public var onTranslationsUpdated: AnyPublisher<Void, Never> {
+        onTranslationsUpdatedSubject.eraseToAnyPublisher()
+    }
+
+    // private(set) public var onLogEvent: AnyPublisher<String, Never> {
+    //     logger.onLogEvent.eraseToAnyPublisher()
+    // }
 
     /// Internal initializer for testing with custom URL session, cache, and lifecycle observer
     /// - Parameters:
@@ -222,6 +238,7 @@ public final class Tolgee {
         }
 
         isInitialized = true
+        onInitializedSubject.send(())
         logger.debug("Tolgee initialized with language: \(language), namespaces: \(namespaces)")
 
         fetch()
@@ -301,6 +318,7 @@ public final class Tolgee {
 
             isFetchingFromCdn = false
             lastFetchDate = Date()
+            onTranslationsUpdatedSubject.send(())
             logger.debug(
                 "Translations fetched successfully at \(self.lastFetchDate ?? .distantPast)")
         }
