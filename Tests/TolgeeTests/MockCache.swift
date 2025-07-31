@@ -1,36 +1,37 @@
 import Foundation
+import os
 
 @testable import Tolgee
 
 /// Mock cache implementation for testing
-actor MockCache: CacheProcotol {
-    private var storage: [CacheDescriptor: Data] = [:]
+final class MockCache: CacheProcotol, Sendable {
+    private let storage = OSAllocatedUnfairLock<[CacheDescriptor: Data]>(initialState: [:])
 
     func loadRecords(for descriptor: CacheDescriptor) -> Data? {
-        return storage[descriptor]
+        return storage.withLock { $0[descriptor] }
     }
 
     func saveRecords(_ data: Data, for descriptor: CacheDescriptor) {
-        storage[descriptor] = data
+        storage.withLock { $0[descriptor] = data }
     }
 
     /// Helper method to pre-populate cache for testing
     func preload(_ data: Data, for descriptor: CacheDescriptor) {
-        storage[descriptor] = data
+        storage.withLock { $0[descriptor] = data }
     }
 
     /// Helper method to clear all cached data
     func clear() {
-        storage.removeAll()
+        storage.withLock { $0.removeAll() }
     }
 
     /// Helper method to check if cache contains data for descriptor
     func contains(_ descriptor: CacheDescriptor) -> Bool {
-        return storage[descriptor] != nil
+        return storage.withLock { $0[descriptor] != nil }
     }
 
     /// Helper method to get all cached descriptors
     var cachedDescriptors: [CacheDescriptor] {
-        return Array(storage.keys)
+        return storage.withLock { Array($0.keys) }
     }
 }
