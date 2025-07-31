@@ -10,33 +10,46 @@ import Foundation
 
 /// Protocol for observing app lifecycle events
 protocol AppLifecycleObserverProtocol: Sendable {
-    func startObserving(target: AnyObject, selector: Selector)
-    func stopObserving(target: AnyObject)
+    func startObserving(onForeground: @escaping @MainActor () -> Void)
+    func stopObserving()
 }
 
 /// Default implementation using NotificationCenter
 final class AppLifecycleObserver: AppLifecycleObserverProtocol, @unchecked Sendable {
-    func startObserving(target: AnyObject, selector: Selector) {
+    private var observers: [NSObjectProtocol] = []
+
+    func startObserving(onForeground: @escaping @MainActor () -> Void) {
         #if canImport(UIKit)
-            NotificationCenter.default.addObserver(
-                target,
-                selector: selector,
-                name: UIApplication.willEnterForegroundNotification,
-                object: nil
-            )
+            let observer = NotificationCenter.default.addObserver(
+                forName: UIApplication.willEnterForegroundNotification,
+                object: nil,
+                queue: .main
+            ) { _ in
+                Task { @MainActor in
+                    onForeground()
+                }
+            }
+            observers.append(observer)
         #endif
 
         #if canImport(AppKit)
-            NotificationCenter.default.addObserver(
-                target,
-                selector: selector,
-                name: NSApplication.willBecomeActiveNotification,
-                object: nil
-            )
+            let observer = NotificationCenter.default.addObserver(
+                forName: NSApplication.willBecomeActiveNotification,
+                object: nil,
+                queue: .main
+            ) { _ in
+                Task { @MainActor in
+                    onForeground()
+                }
+            }
+            observers.append(observer)
         #endif
     }
 
-    func stopObserving(target: AnyObject) {
-        NotificationCenter.default.removeObserver(target)
+    func stopObserving() {
+        for observer in observers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        observers.removeAll()
     }
 }

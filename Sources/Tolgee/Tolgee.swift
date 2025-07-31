@@ -26,7 +26,7 @@ public final class Tolgee {
     private let cache: CacheProcotol
 
     // App lifecycle observer
-    private let lifecycleObserver: AppLifecycleObserver
+    private let lifecycleObserver: AppLifecycleObserverProtocol
 
     private(set) var isInitialized = false
     private(set) var lastFetchDate: Date?
@@ -36,9 +36,9 @@ public final class Tolgee {
     ///   - urlSession: Custom URL session for testing
     ///   - cache: Custom cache implementation for testing
     ///   - lifecycleObserver: Custom lifecycle observer for testing
-    internal init(
+    init(
         urlSession: URLSessionProtocol, cache: CacheProcotol,
-        lifecycleObserver: AppLifecycleObserver = AppLifecycleObserver()
+        lifecycleObserver: AppLifecycleObserverProtocol = AppLifecycleObserver()
     ) {
         self.fetchCdnService = FetchCdnService(urlSession: urlSession)
         self.cache = cache
@@ -47,14 +47,16 @@ public final class Tolgee {
     }
 
     deinit {
-        lifecycleObserver.stopObserving(target: self)
+        lifecycleObserver.stopObserving()
     }
 
     private func setupForegroundObserver() {
-        lifecycleObserver.startObserving(target: self, selector: #selector(appWillEnterForeground))
+        lifecycleObserver.startObserving { [weak self] in
+            self?.appWillEnterForeground()
+        }
     }
 
-    @objc private func appWillEnterForeground() {
+    private func appWillEnterForeground() {
         logger.debug("App entering foreground, triggering translation fetch")
         fetch()
     }
