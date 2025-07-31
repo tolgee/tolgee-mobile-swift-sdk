@@ -108,8 +108,11 @@ struct JSONParser {
     ) -> String {
         switch entry {
         case .simple(let string):
-            return substituteSimplePlaceholders(in: string, with: arguments)
-
+            if arguments.isEmpty {
+                return string  // No arguments, return simple string
+            } else {
+                return substituteSimplePlaceholders(in: string, with: arguments)
+            }
         case .plural(let pluralVariants):
             // For plural entries, we need to find the numeric argument (usually the first one)
             guard let firstArgument = arguments.first else {

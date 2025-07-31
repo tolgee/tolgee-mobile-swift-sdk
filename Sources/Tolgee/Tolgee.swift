@@ -5,8 +5,42 @@ public enum TolgeeError: Error {
     case invalidJSONString
     case translationNotFound
 }
+/// The main Tolgee SDK class for handling localization and translations.
+///
+/// Tolgee provides a modern localization solution that supports:
+/// - Remote translation loading from CDN
+/// - ICU plural form handling for different languages
+/// - Namespace-based translation organization
+/// - Automatic caching and background updates
+/// - Fallback to bundle-based localizations
+///
+/// ## Quick Start
+/// ```swift
+/// // Initialize with your project configuration
+/// Tolgee.shared.initialize(
+///     cdn: URL(string: "https://cdn.tolgee.io/your-project-id")!,
+///     language: "en"
+/// )
+///
+/// // Use translations in your app
+/// let greeting = Tolgee.shared.translate("hello_world")
+/// let personalGreeting = Tolgee.shared.translate("hello_name", "Alice")
+/// ```
 @MainActor
 public final class Tolgee {
+    /// Shared singleton instance of Tolgee for convenient access throughout your app.
+    ///
+    /// This is the recommended way to access Tolgee functionality. The shared instance
+    /// is configured with default URL session and file-based caching.
+    ///
+    /// ## Usage
+    /// ```swift
+    /// // Initialize the SDK
+    /// Tolgee.shared.initialize(language: "en")
+    ///
+    /// // Use translations
+    /// let text = Tolgee.shared.translate("my_key")
+    /// ```
     public static let shared = Tolgee(urlSession: URLSession.shared, cache: FileCache())
 
     // table - [key - TranslationEntry]
@@ -61,6 +95,38 @@ public final class Tolgee {
         fetch()
     }
 
+    /// Initializes the Tolgee SDK with the specified configuration.
+    ///
+    /// This method sets up the Tolgee instance with a CDN URL, target language, and optional
+    /// namespaces for organizing translations. It loads any cached translations and initiates
+    /// a fetch for fresh translations from the CDN if available.
+    ///
+    /// - Parameters:
+    ///   - cdn: The base URL of the Tolgee CDN where translation files are hosted (optional)
+    ///   - language: The target language code (e.g., "en", "es", "cs") for translations
+    ///   - namespaces: A set of namespace identifiers for organizing translations into logical groups (defaults to empty set)
+    ///
+    /// ## Usage
+    /// ```swift
+    /// // Basic initialization with language only
+    /// Tolgee.shared.initialize(language: "en")
+    ///
+    /// // Initialize with CDN and namespaces
+    /// let cdnURL = URL(string: "https://cdn.tolgee.io/your-project-id")!
+    /// Tolgee.shared.initialize(
+    ///     cdn: cdnURL,
+    ///     language: "es",
+    ///     namespaces: ["buttons", "messages", "errors"]
+    /// )
+    /// ```
+    ///
+    /// ## Behavior
+    /// - Loads cached translations immediately if available
+    /// - Initiates background fetch for fresh translations from CDN
+    /// - Prevents multiple initializations (subsequent calls are ignored)
+    /// - Sets up automatic translation refresh when app enters foreground
+    ///
+    /// - Note: Call this method early in your app lifecycle, typically in `application(_:didFinishLaunchingWithOptions:)` or similar
     public func initialize(cdn: URL? = nil, language: String, namespaces: Set<String> = []) {
 
         guard !isInitialized else {
@@ -196,44 +262,43 @@ public final class Tolgee {
         self.translations[table] = translations
     }
 
-    public func translate(
-        _ key: String, value: String? = nil, table: String? = nil, bundle: Bundle = .main
-    ) -> String {
-        // First try to get translation from loaded translations
-        if let translationEntry = translations[table ?? ""]?[key] {
-            switch translationEntry {
-            case .simple(let string):
-                return string
-            case .plural(let pluralVariants):
-                // For simple translation without arguments, return the "other" form
-                return pluralVariants.other
-            }
-        }
-
-        return bundle.localizedString(forKey: key, value: value, table: table)
-    }
-
-    @available(iOS 18.4, *)
-    @available(macOS 15.4, *)
-    public func translate(
-        _ key: String, value: String? = nil, table: String? = nil, bundle: Bundle = .main,
-        locale: Locale = .current
-    ) -> String {
-        // First try to get translation from loaded translations
-        if let translationEntry = translations[table ?? ""]?[key] {
-            switch translationEntry {
-            case .simple(let string):
-                return string
-            case .plural(let pluralVariants):
-                // For simple translation without arguments, return the "other" form
-                return pluralVariants.other
-            }
-        }
-
-        return bundle.localizedString(
-            forKey: key, value: value, table: table, localizations: [locale.language])
-    }
-
+    /// Translates a given key to a localized string with optional format arguments.
+    ///
+    /// This method first attempts to find the translation in the loaded Tolgee translations,
+    /// including support for ICU plural forms and format specifiers. If not found, it falls
+    /// back to the bundle's localized string mechanism.
+    ///
+    /// - Parameters:
+    ///   - key: The translation key to look up
+    ///   - arguments: Variable arguments to substitute into the translated string (supports format specifiers like %@, %d, etc.)
+    ///   - table: The name of the strings table to search (optional, defaults to base table)
+    ///   - bundle: The bundle containing the strings file (defaults to main bundle)
+    /// - Returns: The localized string for the given key with arguments formatted, or the fallback value
+    ///
+    /// ## Usage
+    /// ```swift
+    /// // Simple translation
+    /// let greeting = tolgee.translate("hello_world")
+    ///
+    /// // Translation with arguments
+    /// let personalGreeting = tolgee.translate("hello_name", "Alice")
+    ///
+    /// // Translation with plural forms
+    /// let itemCount = tolgee.translate("item_count", 5)
+    ///
+    /// // Translation from specific table
+    /// let buttonText = tolgee.translate("save_button", table: "Buttons")
+    /// ```
+    ///
+    /// ## ICU Plural Support
+    /// The method automatically handles ICU plural forms for different languages:
+    /// ```json
+    /// {
+    ///   "item_count": "{0, plural, one {# item} other {# items}}"
+    /// }
+    /// ```
+    ///
+    /// - Note: Uses the current device locale for plural rule evaluation
     public func translate(
         _ key: String, _ arguments: CVarArg..., table: String? = nil, bundle: Bundle = .main
     )
@@ -257,6 +322,45 @@ public final class Tolgee {
         return localizedString
     }
 
+    /// Translates a given key to a localized string with optional format arguments and custom locale.
+    ///
+    /// This method provides the same functionality as the basic translate method but allows you to
+    /// specify a custom locale for both plural rule evaluation and bundle localization fallback.
+    /// It first attempts to find the translation in the loaded Tolgee translations, including
+    /// support for ICU plural forms and format specifiers. If not found, it falls back to the
+    /// bundle's localized string mechanism using the specified locale.
+    ///
+    /// - Parameters:
+    ///   - key: The translation key to look up
+    ///   - arguments: Variable arguments to substitute into the translated string (supports format specifiers like %@, %d, etc.)
+    ///   - table: The name of the strings table to search (optional, defaults to base table)
+    ///   - bundle: The bundle containing the strings file (defaults to main bundle)
+    ///   - locale: The locale to use for plural rule evaluation and bundle fallback (defaults to current locale)
+    /// - Returns: The localized string for the given key with arguments formatted according to the specified locale
+    ///
+    /// ## Usage
+    /// ```swift
+    /// let spanishLocale = Locale(identifier: "es_ES")
+    ///
+    /// // Translation with custom locale
+    /// let greeting = tolgee.translate("hello_name", "María", locale: spanishLocale)
+    ///
+    /// // Plural forms with specific locale
+    /// let itemCount = tolgee.translate("item_count", 3, locale: spanishLocale)
+    ///
+    /// // Useful for testing different localizations
+    /// let testLocale = Locale(identifier: "ja_JP")
+    /// let japaneseText = tolgee.translate("welcome_message", locale: testLocale)
+    /// ```
+    ///
+    /// ## Locale-Specific Plural Rules
+    /// Different languages have different plural rules. This method ensures the correct
+    /// plural form is selected based on the specified locale:
+    /// - English: one/other (1 item vs 2 items)
+    /// - Russian: one/few/many/other (1, 2-4, 5+, and other cases)
+    /// - Japanese: other only (no plural distinction)
+    ///
+    /// - Note: Available on iOS 18.4+ and macOS 15.4+ due to the enhanced bundle localization API
     @available(iOS 18.4, *)
     @available(macOS 15.4, *)
     public func translate(

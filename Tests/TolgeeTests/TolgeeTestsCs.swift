@@ -61,7 +61,7 @@ struct TolgeeTestsCs {
             #expect(zeroApples == "Mám 0 jablek")
 
         } else {
-            #expect(false)  // Skip this test on older versions
+            #expect(Bool(false))  // Skip this test on older versions
         }
     }
 
@@ -87,7 +87,7 @@ struct TolgeeTestsCs {
             let zeroPears = tolgee.translate("I have %lf pears", 0.0, locale: czechLocale)
             #expect(zeroPears == "Mám 0.0 hrušek")
         } else {
-            #expect(false)  // Skip this test on older versions
+            #expect(Bool(false))  // Skip this test on older versions
         }
     }
 
