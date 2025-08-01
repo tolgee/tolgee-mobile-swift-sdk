@@ -79,15 +79,15 @@ final class FileCache: CacheProcotol {
         // Write data to cache file
         try data.write(to: cacheFileURL)
     }
-    
+
     func clearAll() throws {
         guard let cacheDirectory = cacheDirectory else { return }
-        
+
         // Check if cache directory exists
         guard FileManager.default.fileExists(atPath: cacheDirectory.path) else {
-            return // Nothing to clear
+            return  // Nothing to clear
         }
-        
+
         // Remove the entire cache directory and its contents
         try FileManager.default.removeItem(at: cacheDirectory)
     }
