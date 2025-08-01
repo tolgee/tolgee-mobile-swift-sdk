@@ -212,7 +212,9 @@ public final class Tolgee {
         self.language = language
         self.namespaces = namespaces
 
-        if let data = cache.loadRecords(for: CacheDescriptor(language: language)) {
+        if let data = cache.loadRecords(
+            for: CacheDescriptor(language: language, appVersionSignature: appVersionSignature))
+        {
             do {
                 // Load cached translations
                 let translations = try JSONParser.loadTranslations(from: data)
@@ -229,7 +231,9 @@ public final class Tolgee {
 
         for namespace in namespaces {
             if let data = cache.loadRecords(
-                for: CacheDescriptor(language: language, namespace: namespace))
+                for: CacheDescriptor(
+                    language: language, namespace: namespace,
+                    appVersionSignature: appVersionSignature))
             {
                 do {
                     // Load cached translations for each namespace
@@ -308,9 +312,12 @@ public final class Tolgee {
                         // Cache the fetched data
                         let descriptor: CacheDescriptor
                         if table.isEmpty {
-                            descriptor = CacheDescriptor(language: language)
+                            descriptor = CacheDescriptor(
+                                language: language, appVersionSignature: self.appVersionSignature)
                         } else {
-                            descriptor = CacheDescriptor(language: language, namespace: table)
+                            descriptor = CacheDescriptor(
+                                language: language, namespace: table,
+                                appVersionSignature: self.appVersionSignature)
                         }
 
                         // Save to cache on background thread to avoid blocking

@@ -14,6 +14,10 @@ final class MockCache: CacheProcotol, Sendable {
     func saveRecords(_ data: Data, for descriptor: CacheDescriptor) {
         storage.withLock { $0[descriptor] = data }
     }
+    
+    func clearAll() throws {
+        storage.withLock { $0.removeAll() }
+    }
 
     /// Helper method to pre-populate cache for testing
     func preload(_ data: Data, for descriptor: CacheDescriptor) {

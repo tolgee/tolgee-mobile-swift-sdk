@@ -3,11 +3,13 @@ import Foundation
 struct CacheDescriptor: Sendable, Hashable {
     var language: String
     var namespace: String?
+    var appVersionSignature: String?
 }
 
 protocol CacheProcotol: Sendable {
     func loadRecords(for descriptor: CacheDescriptor) -> Data?
     func saveRecords(_ data: Data, for descriptor: CacheDescriptor) throws
+    func clearAll() throws
 }
 
 final class FileCache: CacheProcotol {
@@ -29,10 +31,18 @@ final class FileCache: CacheProcotol {
         guard let cacheDirectory = cacheDirectory else { return nil }
 
         let filename: String
+        let baseFilename: String
+
         if let namespace = descriptor.namespace {
-            filename = "\(namespace)_\(descriptor.language).json"
+            baseFilename = "\(namespace)_\(descriptor.language)"
         } else {
-            filename = "\(descriptor.language).json"
+            baseFilename = descriptor.language
+        }
+
+        if let appVersionSignature = descriptor.appVersionSignature {
+            filename = "\(baseFilename)_\(appVersionSignature).json"
+        } else {
+            filename = "\(baseFilename).json"
         }
 
         return cacheDirectory.appendingPathComponent(filename)
@@ -68,5 +78,17 @@ final class FileCache: CacheProcotol {
 
         // Write data to cache file
         try data.write(to: cacheFileURL)
+    }
+    
+    func clearAll() throws {
+        guard let cacheDirectory = cacheDirectory else { return }
+        
+        // Check if cache directory exists
+        guard FileManager.default.fileExists(atPath: cacheDirectory.path) else {
+            return // Nothing to clear
+        }
+        
+        // Remove the entire cache directory and its contents
+        try FileManager.default.removeItem(at: cacheDirectory)
     }
 }

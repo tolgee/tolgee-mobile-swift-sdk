@@ -81,7 +81,7 @@ struct CacheTests {
 
     @Test func testFileCacheBasicOperations() throws {
         let cache = FileCache()
-        let descriptor = CacheDescriptor(language: "en", namespace: nil)
+        let descriptor = CacheDescriptor(language: "en", namespace: nil, appVersionSignature: nil)
         let testData = "test file data".data(using: .utf8)!
 
         // Save data
@@ -94,8 +94,10 @@ struct CacheTests {
 
     @Test func testFileCacheWithNamespace() throws {
         let cache = FileCache()
-        let baseDescriptor = CacheDescriptor(language: "de", namespace: nil)
-        let namespaceDescriptor = CacheDescriptor(language: "de", namespace: "errors")
+        let baseDescriptor = CacheDescriptor(
+            language: "de", namespace: nil, appVersionSignature: nil)
+        let namespaceDescriptor = CacheDescriptor(
+            language: "de", namespace: "errors", appVersionSignature: nil)
 
         let baseData = "base file data".data(using: .utf8)!
         let namespaceData = "namespace file data".data(using: .utf8)!
