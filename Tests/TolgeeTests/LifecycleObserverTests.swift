@@ -16,7 +16,7 @@ struct LifecycleObserverTests {
         let tolgee = Tolgee(
             urlSession: mockSession,
             cache: mockCache,
-            lifecycleObserver: mockLifecycleObserver
+            lifecycleObserver: mockLifecycleObserver, appVersionSignature: nil
         )
 
         // Verify that the lifecycle observer is observing

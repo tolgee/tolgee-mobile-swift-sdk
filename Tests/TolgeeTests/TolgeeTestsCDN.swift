@@ -34,7 +34,12 @@ struct TolgeeTestsCDN {
                 ])
 
             // Create Tolgee instance with mock session
-            let tolgee = Tolgee(urlSession: mockSession, cache: MockCache())
+            let tolgee = Tolgee(
+                urlSession: mockSession,
+                cache: MockCache(),
+                lifecycleObserver: MockLifecycleObserver(),
+                appVersionSignature: nil
+            )
 
             // Initialize with CDN URL
             tolgee.initialize(cdn: cdnURL, language: "cs", namespaces: ["Localizable2"])

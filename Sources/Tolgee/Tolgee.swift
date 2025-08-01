@@ -43,7 +43,11 @@ public final class Tolgee {
     /// // Use translations
     /// let text = Tolgee.shared.translate("my_key")
     /// ```
-    public static let shared = Tolgee(urlSession: URLSession.shared, cache: FileCache())
+    public static let shared = Tolgee(
+        urlSession: URLSession.shared,
+        cache: FileCache(),
+        lifecycleObserver: AppLifecycleObserver(),
+        appVersionSignature: getAppVersionSignature())
 
     // table - [key - TranslationEntry]
     private var translations: [String: [String: TranslationEntry]] = [:]
@@ -73,6 +77,8 @@ public final class Tolgee {
     /// of whether the translations actually changed.
     private(set) public var lastFetchDate: Date?
 
+    private var appVersionSignature: String? = nil
+
     private let onInitializedSubject = PassthroughSubject<Void, Never>()
     private let onTranslationsUpdatedSubject = PassthroughSubject<Void, Never>()
 
@@ -95,8 +101,10 @@ public final class Tolgee {
     ///   - lifecycleObserver: Custom lifecycle observer for testing
     init(
         urlSession: URLSessionProtocol, cache: CacheProcotol,
-        lifecycleObserver: AppLifecycleObserverProtocol = AppLifecycleObserver()
+        lifecycleObserver: AppLifecycleObserverProtocol,
+        appVersionSignature: String?
     ) {
+        self.appVersionSignature = appVersionSignature
         self.fetchCdnService = FetchCdnService(urlSession: urlSession)
         self.cache = cache
         self.lifecycleObserver = lifecycleObserver

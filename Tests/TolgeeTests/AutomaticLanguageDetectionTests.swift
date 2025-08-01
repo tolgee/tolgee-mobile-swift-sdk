@@ -16,7 +16,8 @@ struct AutomaticLanguageDetectionTests {
         let tolgee = Tolgee(
             urlSession: mockSession,
             cache: mockCache,
-            lifecycleObserver: mockLifecycleObserver
+            lifecycleObserver: mockLifecycleObserver,
+            appVersionSignature: nil
         )
 
         // Test automatic initialization (without specifying language)
@@ -41,7 +42,8 @@ struct AutomaticLanguageDetectionTests {
         let tolgee = Tolgee(
             urlSession: mockSession,
             cache: mockCache,
-            lifecycleObserver: mockLifecycleObserver
+            lifecycleObserver: mockLifecycleObserver,
+            appVersionSignature: nil
         )
 
         // Test manual language specification (for testing scenarios)
@@ -76,7 +78,8 @@ struct AutomaticLanguageDetectionTests {
         let tolgee = Tolgee(
             urlSession: mockSession,
             cache: mockCache,
-            lifecycleObserver: mockLifecycleObserver
+            lifecycleObserver: mockLifecycleObserver,
+            appVersionSignature: nil
         )
 
         // We can't easily mock the system locale, but we can test that the method
