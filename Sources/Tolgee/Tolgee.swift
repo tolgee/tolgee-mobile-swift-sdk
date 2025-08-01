@@ -212,9 +212,13 @@ public final class Tolgee {
         self.language = language
         self.namespaces = namespaces
 
+        // Track whether we found any cached data for this app version
+        var foundAnyCache = false
+
         if let data = cache.loadRecords(
             for: CacheDescriptor(language: language, appVersionSignature: appVersionSignature))
         {
+            foundAnyCache = true
             do {
                 // Load cached translations
                 let translations = try JSONParser.loadTranslations(from: data)
@@ -235,6 +239,7 @@ public final class Tolgee {
                     language: language, namespace: namespace,
                     appVersionSignature: appVersionSignature))
             {
+                foundAnyCache = true
                 do {
                     // Load cached translations for each namespace
                     let translations = try JSONParser.loadTranslations(from: data, table: namespace)
@@ -250,6 +255,17 @@ public final class Tolgee {
                 logger.debug(
                     "No cached translations found for language: \(language), namespace: \(namespace)"
                 )
+            }
+        }
+
+        // If no cache was found for the current app version, clear all cache
+        // This ensures we wipe cache files from old app versions
+        if !foundAnyCache {
+            do {
+                try cache.clearAll()
+                logger.debug("Cleared all cache since no cache found for current app version")
+            } catch {
+                logger.error("Failed to clear cache: \(error)")
             }
         }
 
