@@ -3,4 +3,5 @@
 - [ ] Add a hook for analytics events?
 - [ ] allow configuring whether to produce debug logs
 - [ ] Swizzle NSLocalizedString?
-- [ ] avoid having to pass language manually
+- [x] avoid having to pass language manually
+- [ ] make sure we're checking etag (cache control)
