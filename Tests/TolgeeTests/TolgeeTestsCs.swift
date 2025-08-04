@@ -6,13 +6,31 @@ import Testing
 @MainActor
 struct TolgeeTestsCs {
 
-    // Czech test data with complex plural forms
+    // Czech test data with Apple-style complex plural forms
     let testTranslationsJSON = """
         {
-          "Hello, world!": "Ahoj světe!",
-          "I have %lf pears": "{0, plural, one {Mám %lf hrušku} few {Mám %lf hrušky} other {Mám %lf hrušek} }",
-          "I have %lld apples": "{0, plural, one {Mám # jablko} few {Mám # jablka} other {Mám # jablek} }",
-          "My name is %@": "Jmenuji se {0}"
+          "Hello, world!": "Ahoj, světe!",
+          "I have %lf pears": {
+            "variations": {
+              "plural": {
+                "one": "Mám %%lf hrušku",
+                "few": "Mám %%lf hrušky",
+                "other": "Mám %%lf hrušek"
+              }
+            }
+          },
+          "I have %lld apples": {
+            "variations": {
+              "plural": {
+                "one": "Mám %lld jablko",
+                "few": "Mám %lld jablka",
+                "other": "Mám %lld jablek",
+                "many": "Mám %lld jablek"
+              }
+            }
+          },
+          "My name is %@": "Jmenuji se %@",
+          "Redraw": "Překreslit"
         }
         """
 
@@ -22,7 +40,7 @@ struct TolgeeTestsCs {
 
         // Test basic Czech translation without arguments
         let greeting = tolgee.translate("Hello, world!")
-        #expect(greeting == "Ahoj světe!")
+        #expect(greeting == "Ahoj, světe!")
     }
 
     @Test func testCzechSimplePlaceholderReplacement() throws {

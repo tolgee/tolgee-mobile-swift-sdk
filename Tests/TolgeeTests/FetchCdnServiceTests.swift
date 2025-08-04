@@ -5,7 +5,7 @@ import Testing
 
 struct FetchCdnServiceTests {
 
-    let cdnURL = URL(string: "https://cdn.tolg.ee/60ffdb64294ad33e0cc5076cfa71efe2")!
+    let cdnURL = URL(string: "https://cdntest.tolg.ee/47b95b14388ff538b9f7159d0daf92d2")!
 
     @Test func testFetchFilesBasic() async throws {
         let mockSession = MockURLSession()
@@ -14,7 +14,7 @@ struct FetchCdnServiceTests {
         // Set up mock response
         let testURL = cdnURL.appending(component: "cs.json")
         try await mockSession.setMockJSONResponse(
-            for: testURL, json: ["Hello, world!": "Ahoj světe!"])
+            for: testURL, json: ["Hello, world!": "Ahoj, světe!"])
 
         // Test fetching basic language file
         let results = try await service.fetchFiles(
@@ -39,7 +39,7 @@ struct FetchCdnServiceTests {
         let baseURL = cdnURL.appending(component: "cs.json")
         let namespaceURL = cdnURL.appending(component: "Localizable2/cs.json")
         try await mockSession.setMockJSONResponse(
-            for: baseURL, json: ["Hello, world!": "Ahoj světe!"])
+            for: baseURL, json: ["Hello, world!": "Ahoj, světe!"])
         try await mockSession.setMockJSONResponse(
             for: namespaceURL, json: ["Good morning": "Dobré ráno"])
 
@@ -110,7 +110,19 @@ struct FetchCdnServiceTests {
 
         // Set up mock response with specific JSON
         let testURL = cdnURL.appending(component: "cs.json")
-        let testTranslations = ["Hello, world!": "Ahoj světe!", "Good morning": "Dobré ráno"]
+        let testTranslations: [String: Any] = [
+            "Hello, world!": "Ahoj, světe!",
+            "I have %lf pears": [
+                "variations": [
+                    "plural": [
+                        "one": "Mám %%lf hrušku",
+                        "few": "Mám %%lf hrušky",
+                        "other": "Mám %%lf hrušek",
+                    ]
+                ]
+            ],
+            "My name is %@": "Jmenuji se %@",
+        ]
         try await mockSession.setMockJSONResponse(for: testURL, json: testTranslations)
 
         // Fetch and verify we can parse the JSON

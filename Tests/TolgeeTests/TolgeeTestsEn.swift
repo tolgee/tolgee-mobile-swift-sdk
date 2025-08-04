@@ -5,13 +5,27 @@ import Testing
 @MainActor
 struct TolgeeTestsEn {
 
-    // Test data matching the example JSON structure
+    // Test data matching the Apple JSON structure
     let testTranslationsJSON = """
         {
           "Hello, world!": "Hello, world!",
-          "I have %lf pears": "{0, plural, one {I have %lf pear} other {I have %lf pears}}",
-          "I have %lld apples": "{0, plural, one {I have # apple} other {I have # apples}}",
-          "My name is %@": "My name is {0}"
+          "I have %lf pears": {
+            "variations": {
+              "plural": {
+                "one": "I have %%lf pear",
+                "other": "I have %%lf pears"
+              }
+            }
+          },
+          "I have %lld apples": {
+            "variations": {
+              "plural": {
+                "one": "I have %lld apple",
+                "other": "I have %lld apples"
+              }
+            }
+          },
+          "My name is %@": "My name is %@"
         }
         """
 

@@ -27,7 +27,7 @@ struct TolgeeParallelFetchTests {
         let tolgee = await Tolgee.shared
 
         // Test with a valid-looking URL but empty tables array
-        let testURL = URL(string: "https://cdn.tolg.ee/test")!
+        let testURL = URL(string: "https://cdntest.tolg.ee/test")!
 
         // This should handle the case where there are no additional tables
         await tolgee.initialize(cdn: testURL, language: "en")

@@ -5,6 +5,7 @@ public enum TolgeeError: Error {
     case invalidJSONString
     case translationNotFound
 }
+
 /// The main Tolgee SDK class for handling localization and translations.
 ///
 /// Tolgee provides a modern localization solution that supports:
@@ -242,7 +243,7 @@ public final class Tolgee {
                 foundAnyCache = true
                 do {
                     // Load cached translations for each namespace
-                    let translations = try JSONParser.loadTranslations(from: data, table: namespace)
+                    let translations = try JSONParser.loadTranslations(from: data)
                     self.translations[namespace] = translations
                     logger.debug(
                         "Loaded cached translations for language: \(language), namespace: \(namespace)"
@@ -316,7 +317,7 @@ public final class Tolgee {
                         table = String(filePath.prefix(while: { $0 != "/" }))
                     }
                     do {
-                        let translations = try JSONParser.loadTranslations(from: data, table: table)
+                        let translations = try JSONParser.loadTranslations(from: data)
 
                         if self.translations[table] == translations {
                             logger.debug("Translations for table '\(table)' are already up-to-date")
@@ -366,12 +367,17 @@ public final class Tolgee {
     }
 
     func loadTranslations(from jsonString: String, table: String = "") throws {
-        let translations = try JSONParser.loadTranslations(from: jsonString, table: table)
+
+        guard let data = jsonString.data(using: .utf8) else {
+            throw TolgeeError.invalidJSONString
+        }
+
+        let translations = try JSONParser.loadTranslations(from: data)
         self.translations[table] = translations
     }
 
     func loadTranslations(from jsonData: Data, table: String = "") throws {
-        let translations = try JSONParser.loadTranslations(from: jsonData, table: table)
+        let translations = try JSONParser.loadTranslations(from: jsonData)
         self.translations[table] = translations
     }
 
@@ -411,7 +417,44 @@ public final class Tolgee {
 
         // First try to get translation from loaded translations
         if let translationEntry = translations[table ?? ""]?[key] {
-            return JSONParser.formatTranslation(translationEntry, with: arguments, locale: locale)
+            switch translationEntry {
+            case .simple(let string):
+                // If we have arguments, try to format the string
+                if !arguments.isEmpty {
+                    return String(format: string, locale: locale, arguments: arguments)
+                }
+                return string
+            case .plural(let variants):
+                let pluralRules = PluralRules(for: locale)
+                if let number = arguments.compactMap({ $0 as? NSNumber }).first {
+                    switch pluralRules.category(for: number.doubleValue) {
+                    case .zero:
+                        if let string = variants.zero {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    case .one:
+                        if let string = variants.one {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    case .two:
+                        if let string = variants.two {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    case .few:
+                        if let string = variants.few {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    case .many:
+                        if let string = variants.many {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    case .other:
+                        if let string = variants.other {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    }
+                }
+            }
         }
 
         // Fallback to bundle.localizedString
@@ -467,7 +510,44 @@ public final class Tolgee {
     {
         // First try to get translation from loaded translations
         if let translationEntry = translations[table ?? ""]?[key] {
-            return JSONParser.formatTranslation(translationEntry, with: arguments, locale: locale)
+            switch translationEntry {
+            case .simple(let string):
+                // If we have arguments, try to format the string
+                if !arguments.isEmpty {
+                    return String(format: string, locale: locale, arguments: arguments)
+                }
+                return string
+            case .plural(let variants):
+                let pluralRules = PluralRules(for: locale)
+                if let number = arguments.compactMap({ $0 as? NSNumber }).first {
+                    switch pluralRules.category(for: number.doubleValue) {
+                    case .zero:
+                        if let string = variants.zero {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    case .one:
+                        if let string = variants.one {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    case .two:
+                        if let string = variants.two {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    case .few:
+                        if let string = variants.few {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    case .many:
+                        if let string = variants.many {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    case .other:
+                        if let string = variants.other {
+                            return String(format: string, locale: locale, arguments: arguments)
+                        }
+                    }
+                }
+            }
         }
 
         // Fallback to bundle.localizedString

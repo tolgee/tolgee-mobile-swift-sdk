@@ -6,7 +6,7 @@ import Testing
 @MainActor
 struct TolgeeTestsCDN {
 
-    let cdnURL = URL(string: "https://cdn.tolg.ee/60ffdb64294ad33e0cc5076cfa71efe2")!
+    let cdnURL = URL(string: "https://cdntest.tolg.ee/47b95b14388ff538b9f7159d0daf92d2")!
     let locale = Locale(identifier: "cs")
 
     @Test func testCDNInitializationWithMock() async throws {
@@ -80,7 +80,7 @@ struct TolgeeTestsCDN {
 
             // Test that translations were loaded from CDN
             let simpleString = tolgee.translate("Hello, world!", locale: locale)
-            #expect(simpleString == "Ahoj světe!")
+            #expect(simpleString == "Ahoj, světe!")
 
             let parametrizedString = tolgee.translate("My name is %@", "Petr", locale: locale)
             #expect(parametrizedString == "Jmenuji se Petr")

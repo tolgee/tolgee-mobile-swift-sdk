@@ -37,6 +37,12 @@ actor MockURLSession: URLSessionProtocol {
     }
 
     /// Helper method to set up successful mock response with JSON data
+    func setMockJSONResponse(for url: URL, json: [String: Any]) throws {
+        let data = try JSONSerialization.data(withJSONObject: json)
+        setMockResponse(for: url, result: .success(data))
+    }
+
+    /// Helper method to set up successful mock response with simple string JSON data
     func setMockJSONResponse(for url: URL, json: [String: String]) throws {
         let data = try JSONSerialization.data(withJSONObject: json)
         setMockResponse(for: url, result: .success(data))
