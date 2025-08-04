@@ -6,6 +6,8 @@ import Testing
 @MainActor
 struct CacheInitializationClearTests {
 
+    let cdnURL = URL(string: "https://cdn.example.com")!.absoluteString
+
     @Test func testClearCacheWhenNoCacheFound() async throws {
         let mockSession = MockURLSession()
         let mockCache = MockCache()
@@ -15,7 +17,7 @@ struct CacheInitializationClearTests {
         let oldVersionDescriptor = CacheDescriptor(
             language: "en",
             namespace: nil,
-            appVersionSignature: "old-1.0.0"
+            appVersionSignature: "old-1.0.0", cdn: cdnURL
         )
         let oldCacheData = "{\"old_key\": \"old value\"}".data(using: .utf8)!
         mockCache.saveRecords(oldCacheData, for: oldVersionDescriptor)
@@ -54,7 +56,7 @@ struct CacheInitializationClearTests {
         let currentVersionDescriptor = CacheDescriptor(
             language: "en",
             namespace: nil,
-            appVersionSignature: appVersionSignature
+            appVersionSignature: appVersionSignature, cdn: cdnURL
         )
         let currentCacheData = "{\"current_key\": \"current value\"}".data(using: .utf8)!
         mockCache.saveRecords(currentCacheData, for: currentVersionDescriptor)
@@ -63,7 +65,7 @@ struct CacheInitializationClearTests {
         let oldVersionDescriptor = CacheDescriptor(
             language: "en",
             namespace: nil,
-            appVersionSignature: "old-1.0.0"
+            appVersionSignature: "old-1.0.0", cdn: cdnURL
         )
         let oldCacheData = "{\"old_key\": \"old value\"}".data(using: .utf8)!
         mockCache.saveRecords(oldCacheData, for: oldVersionDescriptor)
@@ -101,9 +103,12 @@ struct CacheInitializationClearTests {
 
         // Pre-populate cache with old data
         let oldDescriptors = [
-            CacheDescriptor(language: "en", namespace: nil, appVersionSignature: "old-1.0.0"),
-            CacheDescriptor(language: "en", namespace: "buttons", appVersionSignature: "old-1.0.0"),
-            CacheDescriptor(language: "es", namespace: nil, appVersionSignature: "old-1.0.0"),
+            CacheDescriptor(
+                language: "en", namespace: nil, appVersionSignature: "old-1.0.0", cdn: cdnURL),
+            CacheDescriptor(
+                language: "en", namespace: "buttons", appVersionSignature: "old-1.0.0", cdn: cdnURL),
+            CacheDescriptor(
+                language: "es", namespace: nil, appVersionSignature: "old-1.0.0", cdn: cdnURL),
         ]
 
         let oldCacheData = "{\"old_key\": \"old value\"}".data(using: .utf8)!

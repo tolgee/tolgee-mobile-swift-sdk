@@ -6,18 +6,24 @@ import Testing
 @MainActor
 struct CacheClearTests {
 
+    let cdnURL = URL(string: "https://cdn.example.com")!.absoluteString
+
     @Test func testFileCacheClearAll() throws {
         let cache = FileCache()
 
         // Create test data with different descriptors
         let descriptors = [
-            CacheDescriptor(language: "clear_test_en", namespace: nil, appVersionSignature: nil),
             CacheDescriptor(
-                language: "clear_test_en", namespace: nil, appVersionSignature: "1.0.0"),
+                language: "clear_test_en", namespace: nil, appVersionSignature: nil, cdn: cdnURL),
             CacheDescriptor(
-                language: "clear_test_en", namespace: "buttons", appVersionSignature: nil),
+                language: "clear_test_en", namespace: nil, appVersionSignature: "1.0.0", cdn: cdnURL
+            ),
             CacheDescriptor(
-                language: "clear_test_es", namespace: nil, appVersionSignature: "2.0.0"),
+                language: "clear_test_en", namespace: "buttons", appVersionSignature: nil,
+                cdn: cdnURL),
+            CacheDescriptor(
+                language: "clear_test_es", namespace: nil, appVersionSignature: "2.0.0", cdn: cdnURL
+            ),
         ]
 
         let testData = "{\"test\": \"data\"}".data(using: .utf8)!
@@ -48,11 +54,15 @@ struct CacheClearTests {
 
         // Create test data with different descriptors
         let descriptors = [
-            CacheDescriptor(language: "mock_test_en", namespace: nil, appVersionSignature: nil),
-            CacheDescriptor(language: "mock_test_en", namespace: nil, appVersionSignature: "1.0.0"),
             CacheDescriptor(
-                language: "mock_test_en", namespace: "buttons", appVersionSignature: nil),
-            CacheDescriptor(language: "mock_test_es", namespace: nil, appVersionSignature: "2.0.0"),
+                language: "mock_test_en", namespace: nil, appVersionSignature: nil, cdn: cdnURL),
+            CacheDescriptor(
+                language: "mock_test_en", namespace: nil, appVersionSignature: "1.0.0", cdn: cdnURL),
+            CacheDescriptor(
+                language: "mock_test_en", namespace: "buttons", appVersionSignature: nil,
+                cdn: cdnURL),
+            CacheDescriptor(
+                language: "mock_test_es", namespace: nil, appVersionSignature: "2.0.0", cdn: cdnURL),
         ]
 
         let testData = "{\"test\": \"mock_data\"}".data(using: .utf8)!
@@ -91,7 +101,7 @@ struct CacheClearTests {
 
         // Verify they're still empty
         let testDescriptor = CacheDescriptor(
-            language: "empty_test", namespace: nil, appVersionSignature: nil)
+            language: "empty_test", namespace: nil, appVersionSignature: nil, cdn: cdnURL)
         #expect(fileCache.loadRecords(for: testDescriptor) == nil)
         #expect(mockCache.loadRecords(for: testDescriptor) == nil)
     }

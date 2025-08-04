@@ -5,9 +5,11 @@ import Testing
 
 struct CacheTests {
 
+    let cdnURL = URL(string: "https://cdn.example.com")!.absoluteString
+
     @Test func testMockCacheBasicOperations() async throws {
         let cache = MockCache()
-        let descriptor = CacheDescriptor(language: "en", namespace: nil)
+        let descriptor = CacheDescriptor(language: "en", namespace: nil, cdn: cdnURL)
         let testData = "test data".data(using: .utf8)!
 
         // Initially should be empty
@@ -29,8 +31,8 @@ struct CacheTests {
 
     @Test func testMockCacheWithNamespace() async throws {
         let cache = MockCache()
-        let baseDescriptor = CacheDescriptor(language: "en", namespace: nil)
-        let namespaceDescriptor = CacheDescriptor(language: "en", namespace: "common")
+        let baseDescriptor = CacheDescriptor(language: "en", namespace: nil, cdn: cdnURL)
+        let namespaceDescriptor = CacheDescriptor(language: "en", namespace: "common", cdn: cdnURL)
 
         let baseData = "base data".data(using: .utf8)!
         let namespaceData = "namespace data".data(using: .utf8)!
@@ -50,7 +52,7 @@ struct CacheTests {
 
     @Test func testMockCachePreload() async throws {
         let cache = MockCache()
-        let descriptor = CacheDescriptor(language: "cs", namespace: "test")
+        let descriptor = CacheDescriptor(language: "cs", namespace: "test", cdn: cdnURL)
         let testData = "preloaded data".data(using: .utf8)!
 
         // Preload data
@@ -63,7 +65,7 @@ struct CacheTests {
 
     @Test func testMockCacheClear() async throws {
         let cache = MockCache()
-        let descriptor = CacheDescriptor(language: "fr", namespace: nil)
+        let descriptor = CacheDescriptor(language: "fr", namespace: nil, cdn: cdnURL)
         let testData = "test data".data(using: .utf8)!
 
         // Save data
@@ -81,7 +83,8 @@ struct CacheTests {
 
     @Test func testFileCacheBasicOperations() throws {
         let cache = FileCache()
-        let descriptor = CacheDescriptor(language: "en", namespace: nil, appVersionSignature: nil)
+        let descriptor = CacheDescriptor(
+            language: "en", namespace: nil, appVersionSignature: nil, cdn: cdnURL)
         let testData = "test file data".data(using: .utf8)!
 
         // Save data
@@ -95,9 +98,9 @@ struct CacheTests {
     @Test func testFileCacheWithNamespace() throws {
         let cache = FileCache()
         let baseDescriptor = CacheDescriptor(
-            language: "de", namespace: nil, appVersionSignature: nil)
+            language: "de", namespace: nil, appVersionSignature: nil, cdn: cdnURL)
         let namespaceDescriptor = CacheDescriptor(
-            language: "de", namespace: "errors", appVersionSignature: nil)
+            language: "de", namespace: "errors", appVersionSignature: nil, cdn: cdnURL)
 
         let baseData = "base file data".data(using: .utf8)!
         let namespaceData = "namespace file data".data(using: .utf8)!

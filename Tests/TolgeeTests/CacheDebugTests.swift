@@ -6,15 +6,20 @@ import Testing
 @MainActor
 struct CacheDebugTests {
 
+    let cdnURL = URL(string: "https://cdn.example.com")!.absoluteString
+
     @Test func testCacheFilePaths() {
         let cache = FileCache()
 
         // Test different cache descriptors and their expected file paths
         let descriptors = [
-            CacheDescriptor(language: "en", namespace: nil, appVersionSignature: nil),
-            CacheDescriptor(language: "en", namespace: nil, appVersionSignature: "1.0.0-42"),
-            CacheDescriptor(language: "en", namespace: "buttons", appVersionSignature: nil),
-            CacheDescriptor(language: "en", namespace: "buttons", appVersionSignature: "1.0.0-42"),
+            CacheDescriptor(language: "en", namespace: nil, appVersionSignature: nil, cdn: cdnURL),
+            CacheDescriptor(
+                language: "en", namespace: nil, appVersionSignature: "1.0.0-42", cdn: cdnURL),
+            CacheDescriptor(
+                language: "en", namespace: "buttons", appVersionSignature: nil, cdn: cdnURL),
+            CacheDescriptor(
+                language: "en", namespace: "buttons", appVersionSignature: "1.0.0-42", cdn: cdnURL),
         ]
 
         // Using reflection to access the private method for testing
@@ -41,7 +46,7 @@ struct CacheDebugTests {
             for: CacheDescriptor(
                 language: "en",
                 namespace: nil,
-                appVersionSignature: "different-version"
+                appVersionSignature: "different-version", cdn: cdnURL
             ))
 
         print(

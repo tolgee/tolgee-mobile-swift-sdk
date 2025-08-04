@@ -6,6 +6,8 @@ import Testing
 @MainActor
 struct CacheAppVersionTests {
 
+    let cdnURL = URL(string: "https://cdn.example.com")!.absoluteString
+
     @Test func testCacheFileNamesWithAppVersion() {
         let cache = FileCache()
 
@@ -17,21 +19,21 @@ struct CacheAppVersionTests {
         let descriptorWithoutVersion = CacheDescriptor(
             language: uniqueLanguage,
             namespace: nil,
-            appVersionSignature: nil
+            appVersionSignature: nil, cdn: cdnURL
         )
 
         // Test with app version signature
         let descriptorWithVersion = CacheDescriptor(
             language: uniqueLanguage,
             namespace: nil,
-            appVersionSignature: "1.0.0-42"
+            appVersionSignature: "1.0.0-42", cdn: cdnURL
         )
 
         // Test with namespace and app version
         let descriptorWithNamespaceAndVersion = CacheDescriptor(
             language: uniqueLanguage,
             namespace: "buttons",
-            appVersionSignature: "1.0.0-42"
+            appVersionSignature: "1.0.0-42", cdn: cdnURL
         )
 
         // Create some test data
@@ -59,7 +61,7 @@ struct CacheAppVersionTests {
                 for: CacheDescriptor(
                     language: uniqueLanguage,
                     namespace: nil,
-                    appVersionSignature: "2.0.0-100"
+                    appVersionSignature: "2.0.0-100", cdn: cdnURL
                 ))
 
             #expect(loadedDifferentVersion == nil)
@@ -78,13 +80,13 @@ struct CacheAppVersionTests {
         let descriptorV1 = CacheDescriptor(
             language: uniqueLanguage,
             namespace: nil,
-            appVersionSignature: "1.0.0-42"
+            appVersionSignature: "1.0.0-42", cdn: cdnURL
         )
 
         let descriptorV2 = CacheDescriptor(
             language: uniqueLanguage,
             namespace: nil,
-            appVersionSignature: "2.0.0-100"
+            appVersionSignature: "2.0.0-100", cdn: cdnURL
         )
 
         let testDataV1 = "{\"key\": \"value v1\"}".data(using: .utf8)!

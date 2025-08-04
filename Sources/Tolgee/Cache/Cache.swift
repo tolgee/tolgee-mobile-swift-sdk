@@ -4,15 +4,16 @@ struct CacheDescriptor: Sendable, Hashable {
     var language: String
     var namespace: String?
     var appVersionSignature: String?
+    var cdn: String
 }
 
-protocol CacheProcotol: Sendable {
+protocol CacheProtocol: Sendable {
     func loadRecords(for descriptor: CacheDescriptor) -> Data?
     func saveRecords(_ data: Data, for descriptor: CacheDescriptor) throws
     func clearAll() throws
 }
 
-final class FileCache: CacheProcotol {
+final class FileCache: CacheProtocol {
     private let cacheDirectoryName = "TolgeeCache"
 
     private var cacheDirectory: URL? {
@@ -27,8 +28,20 @@ final class FileCache: CacheProcotol {
         return appSupportDir.appendingPathComponent(cacheDirectoryName)
     }
 
+    private func cacheDirectory(for cdn: String) -> URL? {
+        guard let baseCache = cacheDirectory else { return nil }
+
+        // URL encode the CDN string to create a safe directory name
+        guard let safeCdnName = cdn.addingPercentEncoding(withAllowedCharacters: .alphanumerics)
+        else {
+            return nil
+        }
+
+        return baseCache.appendingPathComponent(safeCdnName)
+    }
+
     private func cacheFileURL(for descriptor: CacheDescriptor) -> URL? {
-        guard let cacheDirectory = cacheDirectory else { return nil }
+        guard let cdnCacheDirectory = cacheDirectory(for: descriptor.cdn) else { return nil }
 
         let filename: String
         let baseFilename: String
@@ -45,7 +58,7 @@ final class FileCache: CacheProcotol {
             filename = "\(baseFilename).json"
         }
 
-        return cacheDirectory.appendingPathComponent(filename)
+        return cdnCacheDirectory.appendingPathComponent(filename)
     }
 
     func loadRecords(for descriptor: CacheDescriptor) -> Data? {
@@ -63,15 +76,15 @@ final class FileCache: CacheProcotol {
     }
 
     func saveRecords(_ data: Data, for descriptor: CacheDescriptor) throws {
-        guard let cacheDirectory = cacheDirectory,
+        guard let cdnCacheDirectory = cacheDirectory(for: descriptor.cdn),
             let cacheFileURL = cacheFileURL(for: descriptor)
         else {
             return
         }
 
-        // Create cache directory if it doesn't exist
+        // Create CDN-specific cache directory if it doesn't exist
         try FileManager.default.createDirectory(
-            at: cacheDirectory,
+            at: cdnCacheDirectory,
             withIntermediateDirectories: true,
             attributes: nil
         )

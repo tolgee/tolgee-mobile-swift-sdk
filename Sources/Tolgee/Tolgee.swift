@@ -62,7 +62,7 @@ public final class Tolgee {
     private let logger = TolgeeLog()
 
     private let fetchCdnService: FetchCdnService
-    private let cache: CacheProcotol
+    private let cache: CacheProtocol
     private let lifecycleObserver: AppLifecycleObserverProtocol
 
     /// Indicates whether the Tolgee SDK has been initialized.
@@ -101,7 +101,7 @@ public final class Tolgee {
     ///   - cache: Custom cache implementation for testing
     ///   - lifecycleObserver: Custom lifecycle observer for testing
     init(
-        urlSession: URLSessionProtocol, cache: CacheProcotol,
+        urlSession: URLSessionProtocol, cache: CacheProtocol,
         lifecycleObserver: AppLifecycleObserverProtocol,
         appVersionSignature: String?
     ) {
@@ -217,7 +217,9 @@ public final class Tolgee {
         var foundAnyCache = false
 
         if let data = cache.loadRecords(
-            for: CacheDescriptor(language: language, appVersionSignature: appVersionSignature))
+            for: CacheDescriptor(
+                language: language, appVersionSignature: appVersionSignature,
+                cdn: cdn?.absoluteString ?? ""))
         {
             foundAnyCache = true
             do {
@@ -238,7 +240,7 @@ public final class Tolgee {
             if let data = cache.loadRecords(
                 for: CacheDescriptor(
                     language: language, namespace: namespace,
-                    appVersionSignature: appVersionSignature))
+                    appVersionSignature: appVersionSignature, cdn: cdn?.absoluteString ?? ""))
             {
                 foundAnyCache = true
                 do {
@@ -330,11 +332,13 @@ public final class Tolgee {
                         let descriptor: CacheDescriptor
                         if table.isEmpty {
                             descriptor = CacheDescriptor(
-                                language: language, appVersionSignature: self.appVersionSignature)
+                                language: language, appVersionSignature: self.appVersionSignature,
+                                cdn: cdnURL.absoluteString)
                         } else {
                             descriptor = CacheDescriptor(
                                 language: language, namespace: table,
-                                appVersionSignature: self.appVersionSignature)
+                                appVersionSignature: self.appVersionSignature,
+                                cdn: cdnURL.absoluteString)
                         }
 
                         // Save to cache on background thread to avoid blocking

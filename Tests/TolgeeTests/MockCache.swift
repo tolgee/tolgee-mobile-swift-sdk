@@ -4,7 +4,7 @@ import os
 @testable import Tolgee
 
 /// Mock cache implementation for testing
-final class MockCache: CacheProcotol, Sendable {
+final class MockCache: CacheProtocol, Sendable {
     private let storage = OSAllocatedUnfairLock<[CacheDescriptor: Data]>(initialState: [:])
 
     func loadRecords(for descriptor: CacheDescriptor) -> Data? {
