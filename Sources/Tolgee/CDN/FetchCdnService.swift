@@ -1,7 +1,7 @@
 import Foundation
 
 protocol URLSessionProtocol: Sendable {
-    func data(from url: URL) async throws -> (Data, URLResponse)
+    func data(for request: URLRequest) async throws -> (Data, URLResponse)
 }
 
 extension URLSession: URLSessionProtocol {}
@@ -31,9 +31,9 @@ final class FetchCdnService: Sendable {
             for filePath in filePaths {
                 let urlSession = self.urlSession
                 group.addTask {
-                    let result = try await urlSession.data(
-                        from: cdnURL.appending(component: filePath)
-                    )
+                    let url = cdnURL.appending(component: filePath)
+                    let request = URLRequest(url: url)
+                    let result = try await urlSession.data(for: request)
                     return (filePath, result)
                 }
             }

@@ -9,7 +9,11 @@ actor MockURLSession: URLSessionProtocol {
 
     init() {}
 
-    func data(from url: URL) async throws -> (Data, URLResponse) {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        guard let url = request.url else {
+            throw URLError(.badURL)
+        }
+
         requestedURLs.append(url)
 
         guard let response = mockResponses[url] else {
