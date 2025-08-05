@@ -53,7 +53,7 @@ struct CacheInitializationClearTests {
         let currentVersionDescriptor = CacheDescriptor(
             language: "en",
             namespace: nil,
-            appVersionSignature: appVersionSignature, cdn: cdnURL
+            appVersionSignature: appVersionSignature, cdn: ""
         )
         let currentCacheData = "{\"current_key\": \"current value\"}".data(using: .utf8)!
         mockCache.saveRecords(currentCacheData, for: currentVersionDescriptor)
@@ -62,7 +62,7 @@ struct CacheInitializationClearTests {
         let oldVersionDescriptor = CacheDescriptor(
             language: "en",
             namespace: nil,
-            appVersionSignature: "old-1.0.0", cdn: cdnURL
+            appVersionSignature: "old-1.0.0", cdn: ""
         )
         let oldCacheData = "{\"old_key\": \"old value\"}".data(using: .utf8)!
         mockCache.saveRecords(oldCacheData, for: oldVersionDescriptor)

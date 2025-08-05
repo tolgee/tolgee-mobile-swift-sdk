@@ -24,7 +24,7 @@ struct FetchCdnServiceTests {
 
         // Should have base translation data
         #expect(results["cs.json"] != nil)
-        #expect(results["cs.json"]!.count > 0)
+        #expect(results["cs.json"]!.0.count > 0)
 
         // Verify the correct URL was requested
         let requestedURLs = await mockSession.requestedURLs
@@ -52,8 +52,8 @@ struct FetchCdnServiceTests {
         // Should have both files
         #expect(results["cs.json"] != nil)
         #expect(results["Localizable2/cs.json"] != nil)
-        #expect(results["cs.json"]!.count > 0)
-        #expect(results["Localizable2/cs.json"]!.count > 0)
+        #expect(results["cs.json"]!.0.count > 0)
+        #expect(results["Localizable2/cs.json"]!.0.count > 0)
 
         // Verify both URLs were requested
         let requestedURLs = await mockSession.requestedURLs
@@ -110,17 +110,9 @@ struct FetchCdnServiceTests {
 
         // Set up mock response with specific JSON
         let testURL = cdnURL.appending(component: "cs.json")
-        let testTranslations: [String: Any] = [
+        let testTranslations: [String: String] = [
             "Hello, world!": "Ahoj, světe!",
-            "I have %lf pears": [
-                "variations": [
-                    "plural": [
-                        "one": "Mám %%lf hrušku",
-                        "few": "Mám %%lf hrušky",
-                        "other": "Mám %%lf hrušek",
-                    ]
-                ]
-            ],
+            "Good morning": "Dobré ráno",
             "My name is %@": "Jmenuji se %@",
         ]
         try await mockSession.setMockJSONResponse(for: testURL, json: testTranslations)
@@ -137,10 +129,10 @@ struct FetchCdnServiceTests {
 
         // Verify we can decode the JSON
         let decoder = JSONDecoder()
-        let translations = try decoder.decode([String: String].self, from: baseData)
+        let translations = try decoder.decode([String: String].self, from: baseData.0)
 
         #expect(!translations.isEmpty)
-        #expect(translations["Hello, world!"] == "Ahoj světe!")
+        #expect(translations["Hello, world!"] == "Ahoj, světe!")
         #expect(translations["Good morning"] == "Dobré ráno")
 
         // Verify the URL was requested

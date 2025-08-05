@@ -23,8 +23,15 @@ struct TolgeeTestsCDN {
                 json: [
                     "Hello, world!": "Ahoj světe!",
                     "My name is %@": "Jmenuji se %@",
-                    "I have %lld apples":
-                        "{0, plural, one {Mám # jablko} few {Mám # jablka} other {Mám # jablek}}",
+                    "I have %lld apples": [
+                        "variations": [
+                            "plural": [
+                                "one": "Mám %lld jablko",
+                                "few": "Mám %lld jablka",
+                                "other": "Mám %lld jablek",
+                            ]
+                        ]
+                    ],
                 ])
 
             try await mockSession.setMockJSONResponse(
@@ -43,8 +50,8 @@ struct TolgeeTestsCDN {
             // Initialize with CDN URL
             tolgee.initialize(cdn: cdnURL, language: "cs", namespaces: ["Localizable2"])
 
-            // Give some time for the async fetch to complete
-            try await Task.sleep(nanoseconds: 500_000_000)  // 0.5 seconds
+            // Explicitly fetch translations from CDN
+            try await tolgee.remoteFetch()
 
             // Test that translations were loaded from mocked CDN
             let simpleString = tolgee.translate("Hello, world!", locale: locale)
@@ -74,8 +81,8 @@ struct TolgeeTestsCDN {
             // Initialize with CDN URL
             tolgee.initialize(cdn: cdnURL, language: "cs", namespaces: ["Localizable2"])
 
-            // Give some time for the async fetch to complete
-            try await Task.sleep(nanoseconds: 3_000_000_000)  // 3 seconds
+            // Explicitly fetch translations from CDN
+            try await tolgee.remoteFetch()
 
             // Test that translations were loaded from CDN
             let simpleString = tolgee.translate("Hello, world!", locale: locale)
