@@ -7,3 +7,7 @@
 
 - [ ] Do remote fetch explicitly?
 - [ ] Figure out how to implement reactive callbacks
+
+
+### Limitations
+- Strings with multiple pluralization arguments are currently not supported, such as "I have %lld apples and %lld oranges.". The SDK will fall back to the translation bundled with the app.
