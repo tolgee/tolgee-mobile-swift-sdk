@@ -3,3 +3,7 @@
 - [ ] Add a hook for analytics events?
 - [ ] Swizzle NSLocalizedString?
 - [ ] make sure we're checking etag (cache control)
+
+
+- [ ] Do remote fetch explicitly?
+- [ ] Figure out how to implement reactive callbacks
