@@ -34,7 +34,7 @@ struct CacheInitializationClearTests {
         )
 
         // Initialize - since no cache exists for the new version, it should clear all cache
-        tolgee.initialize(language: "en")
+        tolgee.initialize(cdn: URL(string: "https://example.com")!, language: "en")
 
         // Verify old cache was cleared
         #expect(
@@ -81,7 +81,7 @@ struct CacheInitializationClearTests {
         )
 
         // Initialize - since cache exists for the current version, it should NOT clear cache
-        tolgee.initialize(language: "en")
+        tolgee.initialize(cdn: URL(string: "https://example.com")!, language: "en")
 
         // Verify both caches still exist (no clearing happened)
         #expect(
@@ -124,7 +124,9 @@ struct CacheInitializationClearTests {
         )
 
         // Initialize with namespaces - no cache exists for new version, should clear all
-        tolgee.initialize(language: "en", namespaces: ["buttons", "messages"])
+        tolgee.initialize(
+            cdn: URL(string: "https://example.com")!, language: "en",
+            namespaces: ["buttons", "messages"])
 
         // Verify all old cache was cleared
         for descriptor in oldDescriptors {

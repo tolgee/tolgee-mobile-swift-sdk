@@ -13,12 +13,6 @@ final class FetchCdnService: Sendable {
         self.urlSession = urlSession
     }
 
-    /// Fetches files from CDN in parallel
-    /// - Parameters:
-    ///   - cdnURL: Base CDN URL
-    ///   - filePaths: List of file paths to download relative to the CDN URL
-    /// - Returns: Dictionary of file paths to downloaded data
-    /// - Throws: Error if any of the downloads fail
     func fetchFiles(
         from cdnURL: URL,
         filePaths: [String]

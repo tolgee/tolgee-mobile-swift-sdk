@@ -19,7 +19,7 @@ struct AutomaticLanguageDetectionTests {
         )
 
         // Test automatic initialization (without specifying language)
-        tolgee.initialize()
+        tolgee.initialize(cdn: URL(string: "https://example.com")!)
 
         // Verify that the instance is initialized
         #expect(tolgee.isInitialized)
@@ -43,7 +43,7 @@ struct AutomaticLanguageDetectionTests {
         )
 
         // Test manual language specification (for testing scenarios)
-        tolgee.initialize(language: "cs")
+        tolgee.initialize(cdn: URL(string: "https://example.com")!, language: "cs")
 
         // Verify that the instance is initialized
         #expect(tolgee.isInitialized)

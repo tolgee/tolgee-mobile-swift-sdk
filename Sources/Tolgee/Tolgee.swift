@@ -50,12 +50,13 @@ public final class Tolgee {
     /// let text = Tolgee.shared.translate("my_key")
     /// ```
     public static let shared = Tolgee(
-        urlSession: URLSession.shared,
+        urlSession: URLSession(configuration: .default),
         cache: FileCache(),
         appVersionSignature: getAppVersionSignature())
 
     // table - [key - TranslationEntry]
     private var translations: [String: [String: TranslationEntry]] = [:]
+    private var cdnEtags: [String: String] = [:]
     private var cdnURL: URL?
 
     private var language: String?
@@ -82,12 +83,7 @@ public final class Tolgee {
 
     private var appVersionSignature: String? = nil
 
-    private let onInitializedSubject = PassthroughSubject<Void, Never>()
     private let onTranslationsUpdatedSubject = PassthroughSubject<Void, Never>()
-
-    public var onInitialized: AnyPublisher<Void, Never> {
-        onInitializedSubject.eraseToAnyPublisher()
-    }
 
     public var onTranslationsUpdated: AnyPublisher<Void, Never> {
         onTranslationsUpdatedSubject.eraseToAnyPublisher()
@@ -172,7 +168,7 @@ public final class Tolgee {
     ///   Use explicit `language` values primarily for testing specific language scenarios.
     ///   After initialization, call `remoteFetch()` to update translations from the CDN.
     public func initialize(
-        cdn: URL? = nil, language: String? = nil, namespaces: Set<String> = [],
+        cdn: URL, language: String? = nil, namespaces: Set<String> = [],
         enableDebugLogs: Bool = false
     ) {
 
@@ -192,10 +188,19 @@ public final class Tolgee {
         // Track whether we found any cached data for this app version
         var foundAnyCache = false
 
+        if let etag = cache.loadCdnEtag(for: .init(language: language, cdn: cdn.absoluteString)) {
+            foundAnyCache = true
+            cdnEtags[""] = etag
+            logger.debug(
+                "Loaded CDN ETag for language: \(language) and base namespace - ETag: \(etag)")
+        } else {
+            logger.debug("No CDN ETag found for language: \(language) and base namespace")
+        }
+
         if let data = cache.loadRecords(
             for: CacheDescriptor(
                 language: language, appVersionSignature: appVersionSignature,
-                cdn: cdn?.absoluteString ?? ""))
+                cdn: cdn.absoluteString))
         {
             foundAnyCache = true
             do {
@@ -213,10 +218,23 @@ public final class Tolgee {
         }
 
         for namespace in namespaces {
+
+            if let etag = cache.loadCdnEtag(
+                for: .init(language: language, namespace: namespace, cdn: cdn.absoluteString))
+            {
+                foundAnyCache = true
+                cdnEtags[namespace] = etag
+                logger.debug(
+                    "Loaded CDN ETag for language: \(language), namespace: \(namespace) - ETag: \(etag)"
+                )
+            } else {
+                logger.debug("No CDN ETag found for language: \(language), namespace: \(namespace)")
+            }
+
             if let data = cache.loadRecords(
                 for: CacheDescriptor(
                     language: language, namespace: namespace,
-                    appVersionSignature: appVersionSignature, cdn: cdn?.absoluteString ?? ""))
+                    appVersionSignature: appVersionSignature, cdn: cdn.absoluteString))
             {
                 foundAnyCache = true
                 do {
@@ -241,7 +259,7 @@ public final class Tolgee {
         // This ensures we wipe cache files from old app versions
         if !foundAnyCache {
             do {
-                try cache.clearAll()
+                try clearCaches()
                 logger.debug("Cleared all cache since no cache found for current app version")
             } catch {
                 logger.error("Failed to clear cache: \(error)")
@@ -249,7 +267,6 @@ public final class Tolgee {
         }
 
         isInitialized = true
-        onInitializedSubject.send(())
         logger.debug("Tolgee initialized with language: \(language), namespaces: \(namespaces)")
     }
 
@@ -602,6 +619,7 @@ public final class Tolgee {
     ///
     /// - Throws: An error if the cache clearing operation fails.
     public func clearCaches() throws {
+        cdnEtags.removeAll()
         try cache.clearAll()
         logger.debug("Successfully cleared all cached translations and ETag data")
     }
