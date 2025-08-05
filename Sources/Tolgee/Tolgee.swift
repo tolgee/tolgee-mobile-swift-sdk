@@ -368,7 +368,7 @@ public final class Tolgee {
                     self.logger.error("Failed to save translations to cache: \(error)")
                 }
 
-                if let etag = response.allHeaderFields["etag"] as? String {
+                if let etag = response.allHeaderFields["Etag"] as? String {
                     let etagDescriptor: CdnEtagDescriptor
                     if table.isEmpty {
                         etagDescriptor = CdnEtagDescriptor(
@@ -593,5 +593,16 @@ public final class Tolgee {
         }
 
         return localizedString
+    }
+
+    /// Clears all cached translations and ETag data.
+    ///
+    /// This method removes all cached files from the local cache,
+    /// forcing fresh downloads on the next `remoteFetch()` call.
+    ///
+    /// - Throws: An error if the cache clearing operation fails.
+    public func clearCaches() throws {
+        try cache.clearAll()
+        logger.debug("Successfully cleared all cached translations and ETag data")
     }
 }
