@@ -18,4 +18,8 @@ final class TolgeeLog: Sendable {
     func error(_ message: String) {
         logger.error("Tolgee: \(message)")
     }
+
+    func warning(_ message: String) {
+        logger.warning("Tolgee: \(message)")
+    }
 }

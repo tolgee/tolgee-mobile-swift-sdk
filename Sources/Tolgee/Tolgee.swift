@@ -309,7 +309,15 @@ public final class Tolgee {
         )
 
         // Process the fetched translation data
-        for (filePath, data) in translationData {
+        for (filePath, result) in translationData {
+
+            let data = result.0
+            guard let response = result.1 as? HTTPURLResponse else {
+                logger.error(
+                    "Invalid response for file path: \(filePath). It's not an HTTP response.")
+                continue
+            }
+
             // Determine the table name from the file path
             let table: String
             if filePath == "\(language).json" {
@@ -318,7 +326,20 @@ public final class Tolgee {
                 // Extract table name from "table/language.json" format
                 table = String(filePath.prefix(while: { $0 != "/" }))
             }
+
             do {
+
+                if response.statusCode == 304 {
+                    logger.debug(
+                        "No changes for table '\(table)' (304 status code), skipping update")
+                    continue
+                } else if response.statusCode != 200 {
+                    logger.error(
+                        "Failed to fetch translations for table '\(table)': HTTP \(response.statusCode)"
+                    )
+                    continue
+                }
+
                 let translations = try JSONParser.loadTranslations(from: data)
 
                 if self.translations[table] == translations {
@@ -345,6 +366,23 @@ public final class Tolgee {
                     try self.cache.saveRecords(data, for: descriptor)
                 } catch {
                     self.logger.error("Failed to save translations to cache: \(error)")
+                }
+
+                if let etag = response.allHeaderFields["etag"] as? String {
+                    let etagDescriptor: CdnEtagDescriptor
+                    if table.isEmpty {
+                        etagDescriptor = CdnEtagDescriptor(
+                            language: language,
+                            cdn: cdnURL.absoluteString)
+                    } else {
+                        etagDescriptor = CdnEtagDescriptor(
+                            language: language, namespace: table,
+                            cdn: cdnURL.absoluteString)
+                    }
+                    try self.cache.saveCdnEtag(etagDescriptor, etag: etag)
+                } else {
+                    self.logger.warning(
+                        "No etag header found for \(cdnURL.appending(component: filePath))")
                 }
 
                 logger.debug(

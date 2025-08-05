@@ -25,7 +25,7 @@ final class MockCache: CacheProtocol, Sendable {
         return etagStorage.withLock { $0[descriptor] }
     }
 
-    func saveCdnEtag(_ descriptor: CdnEtagDescriptor, for etag: String) throws {
+    func saveCdnEtag(_ descriptor: CdnEtagDescriptor, etag: String) throws {
         etagStorage.withLock { $0[descriptor] = etag }
     }
 

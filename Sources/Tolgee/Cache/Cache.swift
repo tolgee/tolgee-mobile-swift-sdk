@@ -18,7 +18,7 @@ protocol CacheProtocol: Sendable {
     func saveRecords(_ data: Data, for descriptor: CacheDescriptor) throws
     func clearAll() throws
     func loadCdnEtag(for descriptor: CdnEtagDescriptor) -> String?
-    func saveCdnEtag(_ descriptor: CdnEtagDescriptor, for cdn: String) throws
+    func saveCdnEtag(_ descriptor: CdnEtagDescriptor, etag: String) throws
 }
 
 final class FileCache: CacheProtocol {
@@ -146,7 +146,7 @@ final class FileCache: CacheProtocol {
         }
     }
 
-    func saveCdnEtag(_ descriptor: CdnEtagDescriptor, for cdn: String) throws {
+    func saveCdnEtag(_ descriptor: CdnEtagDescriptor, etag: String) throws {
         guard let cdnCacheDirectory = cacheDirectory(for: descriptor.cdn),
             let etagFileURL = etagFileURL(for: descriptor)
         else {
@@ -161,6 +161,6 @@ final class FileCache: CacheProtocol {
         )
 
         // Write etag to file (the `cdn` parameter is actually the etag value)
-        try cdn.write(to: etagFileURL, atomically: true, encoding: .utf8)
+        try etag.write(to: etagFileURL, atomically: true, encoding: .utf8)
     }
 }
