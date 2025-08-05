@@ -397,6 +397,7 @@ public final class Tolgee {
                             cdn: cdnURL.absoluteString)
                     }
                     try self.cache.saveCdnEtag(etagDescriptor, etag: etag)
+                    self.cdnEtags[table] = etag
                 } else {
                     self.logger.warning(
                         "No etag header found for \(cdnURL.appending(component: filePath))")
