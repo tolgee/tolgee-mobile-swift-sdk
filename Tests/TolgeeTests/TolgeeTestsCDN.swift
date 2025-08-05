@@ -37,7 +37,6 @@ struct TolgeeTestsCDN {
             let tolgee = Tolgee(
                 urlSession: mockSession,
                 cache: MockCache(),
-                lifecycleObserver: MockLifecycleObserver(),
                 appVersionSignature: nil
             )
 

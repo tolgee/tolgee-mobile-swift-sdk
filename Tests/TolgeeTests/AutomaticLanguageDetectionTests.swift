@@ -10,13 +10,11 @@ struct AutomaticLanguageDetectionTests {
         // Create mock dependencies
         let mockSession = MockURLSession()
         let mockCache = MockCache()
-        let mockLifecycleObserver = MockLifecycleObserver()
 
         // Create a fresh Tolgee instance for testing
         let tolgee = Tolgee(
             urlSession: mockSession,
             cache: mockCache,
-            lifecycleObserver: mockLifecycleObserver,
             appVersionSignature: nil
         )
 
@@ -36,13 +34,11 @@ struct AutomaticLanguageDetectionTests {
         // Create mock dependencies
         let mockSession = MockURLSession()
         let mockCache = MockCache()
-        let mockLifecycleObserver = MockLifecycleObserver()
 
         // Create a fresh Tolgee instance for testing
         let tolgee = Tolgee(
             urlSession: mockSession,
             cache: mockCache,
-            lifecycleObserver: mockLifecycleObserver,
             appVersionSignature: nil
         )
 
@@ -72,13 +68,11 @@ struct AutomaticLanguageDetectionTests {
         // Create mock dependencies
         let mockSession = MockURLSession()
         let mockCache = MockCache()
-        let mockLifecycleObserver = MockLifecycleObserver()
 
         // Create a fresh Tolgee instance for testing
         let tolgee = Tolgee(
             urlSession: mockSession,
             cache: mockCache,
-            lifecycleObserver: mockLifecycleObserver,
             appVersionSignature: nil
         )
 

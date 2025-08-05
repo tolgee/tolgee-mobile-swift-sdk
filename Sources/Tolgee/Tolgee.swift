@@ -22,6 +22,9 @@ public enum TolgeeError: Error {
 ///     cdn: URL(string: "https://cdn.tolgee.io/your-project-id")!
 /// )
 ///
+/// // Fetch latest translations
+/// try await Tolgee.shared.remoteFetch()
+///
 /// // Use translations in your app
 /// let greeting = Tolgee.shared.translate("hello_world")
 /// let personalGreeting = Tolgee.shared.translate("hello_name", "Alice")
@@ -37,9 +40,11 @@ public final class Tolgee {
     /// ```swift
     /// // Initialize with automatic language detection (production)
     /// Tolgee.shared.initialize()
+    /// try await Tolgee.shared.remoteFetch()
     ///
     /// // Initialize with specific language (testing)
     /// Tolgee.shared.initialize(language: "en")
+    /// try await Tolgee.shared.remoteFetch()
     ///
     /// // Use translations
     /// let text = Tolgee.shared.translate("my_key")
@@ -47,13 +52,11 @@ public final class Tolgee {
     public static let shared = Tolgee(
         urlSession: URLSession.shared,
         cache: FileCache(),
-        lifecycleObserver: AppLifecycleObserver(),
         appVersionSignature: getAppVersionSignature())
 
     // table - [key - TranslationEntry]
     private var translations: [String: [String: TranslationEntry]] = [:]
     private var cdnURL: URL?
-    private var isFetchingFromCdn = false
 
     private var language: String?
     private var namespaces: Set<String> = []
@@ -63,7 +66,6 @@ public final class Tolgee {
 
     private let fetchCdnService: FetchCdnService
     private let cache: CacheProtocol
-    private let lifecycleObserver: AppLifecycleObserverProtocol
 
     /// Indicates whether the Tolgee SDK has been initialized.
     ///
@@ -91,44 +93,15 @@ public final class Tolgee {
         onTranslationsUpdatedSubject.eraseToAnyPublisher()
     }
 
-    // private(set) public var onLogEvent: AnyPublisher<String, Never> {
-    //     logger.onLogEvent.eraseToAnyPublisher()
-    // }
-
-    /// Internal initializer for testing with custom URL session, cache, and lifecycle observer
-    /// - Parameters:
-    ///   - urlSession: Custom URL session for testing
-    ///   - cache: Custom cache implementation for testing
-    ///   - lifecycleObserver: Custom lifecycle observer for testing
     init(
         urlSession: URLSessionProtocol, cache: CacheProtocol,
-        lifecycleObserver: AppLifecycleObserverProtocol,
         appVersionSignature: String?
     ) {
         self.appVersionSignature = appVersionSignature
         self.fetchCdnService = FetchCdnService(urlSession: urlSession)
         self.cache = cache
-        self.lifecycleObserver = lifecycleObserver
-        lifecycleObserver.startObserving { [weak self] in
-            self?.fetch()
-        }
     }
 
-    deinit {
-        lifecycleObserver.stopObserving()
-    }
-
-    /// Gets the preferred language from the device's locale settings.
-    ///
-    /// This method extracts the language code from the device's preferred locale,
-    /// which is typically set by the user in their device settings.
-    ///
-    /// - Returns: The language code (e.g., "en", "es", "cs") based on device settings
-    ///
-    /// ## Examples
-    /// - Device set to English: returns "en"
-    /// - Device set to Spanish (Spain): returns "es"
-    /// - Device set to Czech: returns "cs"
     private func getPreferredLanguage() -> String {
         // Get the preferred language from the device's locale
         let preferredLanguage = Locale.preferredLanguages.first ?? "en"
@@ -162,13 +135,16 @@ public final class Tolgee {
     /// ```swift
     /// // Automatic language detection (recommended for production)
     /// Tolgee.shared.initialize()
+    /// try await Tolgee.shared.remoteFetch()
     ///
     /// // Automatic detection with CDN
     /// let cdnURL = URL(string: "https://cdn.tolgee.io/your-project-id")!
     /// Tolgee.shared.initialize(cdn: cdnURL)
+    /// try await Tolgee.shared.remoteFetch()
     ///
     /// // Manual language specification (useful for testing)
     /// Tolgee.shared.initialize(language: "en")
+    /// try await Tolgee.shared.remoteFetch()
     ///
     /// // Full configuration with CDN, language, and namespaces
     /// Tolgee.shared.initialize(
@@ -176,6 +152,7 @@ public final class Tolgee {
     ///     language: "es",
     ///     namespaces: ["buttons", "messages", "errors"]
     /// )
+    /// try await Tolgee.shared.remoteFetch()
     /// ```
     ///
     /// ## Language Detection
@@ -189,12 +166,11 @@ public final class Tolgee {
     /// - **Automatic language**: Respects user's device language settings
     /// - **Manual language**: Uses specified language regardless of device settings
     /// - **Caching**: Loads cached translations immediately if available
-    /// - **Background fetch**: Initiates CDN fetch for fresh translations
     /// - **Initialization guard**: Prevents multiple initializations (subsequent calls are ignored)
-    /// - **Lifecycle management**: Sets up automatic refresh when app enters foreground
     ///
     /// - Note: For production apps, omit the `language` parameter to provide the best user experience.
     ///   Use explicit `language` values primarily for testing specific language scenarios.
+    ///   After initialization, call `remoteFetch()` to update translations from the CDN.
     public func initialize(
         cdn: URL? = nil, language: String? = nil, namespaces: Set<String> = [],
         enableDebugLogs: Bool = false
@@ -275,99 +251,114 @@ public final class Tolgee {
         isInitialized = true
         onInitializedSubject.send(())
         logger.debug("Tolgee initialized with language: \(language), namespaces: \(namespaces)")
-
-        fetch()
     }
 
-    func fetch() {
-        guard let cdnURL, let language, !isFetchingFromCdn, language.isEmpty == false else {
+    /// Fetches the latest translations from the CDN.
+    ///
+    /// This method explicitly fetches translations from the configured CDN URL for the current
+    /// language and namespaces. It will update cached translations and notify observers when
+    /// the fetch completes.
+    ///
+    /// The method performs the following operations:
+    /// - Constructs file paths for all required translation files
+    /// - Fetches translation data from the CDN
+    /// - Processes and caches the fetched translations
+    /// - Updates the `lastFetchDate` property
+    /// - Sends notifications via `onTranslationsUpdated`
+    ///
+    /// ## Usage
+    /// ```swift
+    /// // Initialize Tolgee first
+    /// Tolgee.shared.initialize(cdn: cdnURL, language: "en")
+    ///
+    /// // Explicitly fetch latest translations
+    /// try await Tolgee.shared.remoteFetch()
+    ///
+    /// // With error handling
+    /// do {
+    ///     try await Tolgee.shared.remoteFetch()
+    /// } catch {
+    ///     print("Failed to fetch translations: \(error)")
+    /// }
+    /// ```
+    ///
+    /// - Throws: An error if the fetch operation fails
+    /// - Note: This method requires that Tolgee has been initialized with a CDN URL and language.
+    ///   The method will return early if these prerequisites are not met.
+    public func remoteFetch() async throws {
+        guard let cdnURL, let language, language.isEmpty == false else {
             return
         }
 
-        isFetchingFromCdn = true
+        logger.debug(
+            String(
+                "Fetching translations from CDN for language: \(language), namespaces: \(namespaces)"
+            ))
 
-        // TODO: do the decodecing after fetching on a background thread
-        Task {
-
-            logger.debug(
-                String(
-                    "Fetching translations from CDN for language: \(language), namespaces: \(namespaces)"
-                ))
-
-            do {
-                // Construct file paths for all translation files
-                var filePaths: [String] = ["\(language).json"]  // Base language file
-                for namespace in namespaces {
-                    filePaths.append("\(namespace)/\(language).json")  // Namespace files
-                }
-
-                // Use the FetchCdnService to get all translation data
-                let fetchService = fetchCdnService
-                let translationData = try await fetchService.fetchFiles(
-                    from: cdnURL,
-                    filePaths: filePaths
-                )
-
-                // Process the fetched translation data
-                for (filePath, data) in translationData {
-                    // Determine the table name from the file path
-                    let table: String
-                    if filePath == "\(language).json" {
-                        table = ""  // Base table
-                    } else {
-                        // Extract table name from "table/language.json" format
-                        table = String(filePath.prefix(while: { $0 != "/" }))
-                    }
-                    do {
-                        let translations = try JSONParser.loadTranslations(from: data)
-
-                        if self.translations[table] == translations {
-                            logger.debug("Translations for table '\(table)' are already up-to-date")
-                            continue
-                        }
-
-                        self.translations[table] = translations
-
-                        // Cache the fetched data
-                        let descriptor: CacheDescriptor
-                        if table.isEmpty {
-                            descriptor = CacheDescriptor(
-                                language: language, appVersionSignature: self.appVersionSignature,
-                                cdn: cdnURL.absoluteString)
-                        } else {
-                            descriptor = CacheDescriptor(
-                                language: language, namespace: table,
-                                appVersionSignature: self.appVersionSignature,
-                                cdn: cdnURL.absoluteString)
-                        }
-
-                        // Save to cache on background thread to avoid blocking
-                        Task.detached {
-                            do {
-                                try self.cache.saveRecords(data, for: descriptor)
-                            } catch {
-                                self.logger.error("Failed to save translations to cache: \(error)")
-                            }
-
-                        }
-
-                        logger.debug(
-                            "Cached translations for language: \(language), namespace: \(table.isEmpty ? "base" : table)"
-                        )
-                    } catch {
-                        logger.error("Error loading translations for table '\(table)': \(error)")
-                    }
-                }
-            } catch {
-                logger.error("Failed to fetch translations from CDN: \(error)")
-            }
-
-            isFetchingFromCdn = false
-            lastFetchDate = Date()
-            onTranslationsUpdatedSubject.send(())
-            logger.debug(
-                "Translations fetched successfully at \(self.lastFetchDate ?? .distantPast)")
+        // Construct file paths for all translation files
+        var filePaths: [String] = ["\(language).json"]  // Base language file
+        for namespace in namespaces {
+            filePaths.append("\(namespace)/\(language).json")  // Namespace files
         }
+
+        // Use the FetchCdnService to get all translation data
+        let fetchService = fetchCdnService
+        let translationData = try await fetchService.fetchFiles(
+            from: cdnURL,
+            filePaths: filePaths
+        )
+
+        // Process the fetched translation data
+        for (filePath, data) in translationData {
+            // Determine the table name from the file path
+            let table: String
+            if filePath == "\(language).json" {
+                table = ""  // Base table
+            } else {
+                // Extract table name from "table/language.json" format
+                table = String(filePath.prefix(while: { $0 != "/" }))
+            }
+            do {
+                let translations = try JSONParser.loadTranslations(from: data)
+
+                if self.translations[table] == translations {
+                    logger.debug("Translations for table '\(table)' are already up-to-date")
+                    continue
+                }
+
+                self.translations[table] = translations
+
+                // Cache the fetched data
+                let descriptor: CacheDescriptor
+                if table.isEmpty {
+                    descriptor = CacheDescriptor(
+                        language: language, appVersionSignature: self.appVersionSignature,
+                        cdn: cdnURL.absoluteString)
+                } else {
+                    descriptor = CacheDescriptor(
+                        language: language, namespace: table,
+                        appVersionSignature: self.appVersionSignature,
+                        cdn: cdnURL.absoluteString)
+                }
+
+                do {
+                    try self.cache.saveRecords(data, for: descriptor)
+                } catch {
+                    self.logger.error("Failed to save translations to cache: \(error)")
+                }
+
+                logger.debug(
+                    "Cached translations for language: \(language), namespace: \(table.isEmpty ? "base" : table)"
+                )
+            } catch {
+                logger.error("Error loading translations for table '\(table)': \(error)")
+            }
+        }
+
+        lastFetchDate = Date()
+        onTranslationsUpdatedSubject.send(())
+        logger.debug(
+            "Translations fetched successfully at \(self.lastFetchDate ?? .distantPast)")
     }
 
     func loadTranslations(from jsonString: String, table: String = "") throws {

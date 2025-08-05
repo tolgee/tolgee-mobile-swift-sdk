@@ -11,7 +11,6 @@ struct CacheInitializationClearTests {
     @Test func testClearCacheWhenNoCacheFound() async throws {
         let mockSession = MockURLSession()
         let mockCache = MockCache()
-        let mockLifecycleObserver = MockLifecycleObserver()
 
         // Pre-populate cache with data for a different app version to simulate old cache
         let oldVersionDescriptor = CacheDescriptor(
@@ -31,7 +30,6 @@ struct CacheInitializationClearTests {
         let tolgee = Tolgee(
             urlSession: mockSession,
             cache: mockCache,
-            lifecycleObserver: mockLifecycleObserver,
             appVersionSignature: "new-2.0.0"
         )
 
@@ -48,7 +46,6 @@ struct CacheInitializationClearTests {
     @Test func testDoNotClearCacheWhenCacheFound() async throws {
         let mockSession = MockURLSession()
         let mockCache = MockCache()
-        let mockLifecycleObserver = MockLifecycleObserver()
 
         let appVersionSignature = "current-1.5.0"
 
@@ -80,7 +77,6 @@ struct CacheInitializationClearTests {
         let tolgee = Tolgee(
             urlSession: mockSession,
             cache: mockCache,
-            lifecycleObserver: mockLifecycleObserver,
             appVersionSignature: appVersionSignature
         )
 
@@ -99,7 +95,6 @@ struct CacheInitializationClearTests {
     @Test func testClearCacheWithNamespaces() async throws {
         let mockSession = MockURLSession()
         let mockCache = MockCache()
-        let mockLifecycleObserver = MockLifecycleObserver()
 
         // Pre-populate cache with old data
         let oldDescriptors = [
@@ -125,7 +120,6 @@ struct CacheInitializationClearTests {
         let tolgee = Tolgee(
             urlSession: mockSession,
             cache: mockCache,
-            lifecycleObserver: mockLifecycleObserver,
             appVersionSignature: "new-2.0.0"
         )
 
