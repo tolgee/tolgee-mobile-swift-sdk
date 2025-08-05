@@ -6,6 +6,7 @@ import os
 /// Mock cache implementation for testing
 final class MockCache: CacheProtocol, Sendable {
     private let storage = OSAllocatedUnfairLock<[CacheDescriptor: Data]>(initialState: [:])
+    private let etagStorage = OSAllocatedUnfairLock<[CdnEtagDescriptor: String]>(initialState: [:])
 
     func loadRecords(for descriptor: CacheDescriptor) -> Data? {
         return storage.withLock { $0[descriptor] }
@@ -17,6 +18,15 @@ final class MockCache: CacheProtocol, Sendable {
 
     func clearAll() throws {
         storage.withLock { $0.removeAll() }
+        etagStorage.withLock { $0.removeAll() }
+    }
+
+    func loadCdnEtag(for descriptor: CdnEtagDescriptor) -> String? {
+        return etagStorage.withLock { $0[descriptor] }
+    }
+
+    func saveCdnEtag(_ descriptor: CdnEtagDescriptor, for etag: String) throws {
+        etagStorage.withLock { $0[descriptor] = etag }
     }
 
     /// Helper method to pre-populate cache for testing
@@ -27,11 +37,22 @@ final class MockCache: CacheProtocol, Sendable {
     /// Helper method to clear all cached data
     func clear() {
         storage.withLock { $0.removeAll() }
+        etagStorage.withLock { $0.removeAll() }
+    }
+
+    /// Helper method to pre-populate etag for testing
+    func preloadEtag(_ etag: String, for descriptor: CdnEtagDescriptor) {
+        etagStorage.withLock { $0[descriptor] = etag }
     }
 
     /// Helper method to check if cache contains data for descriptor
     func contains(_ descriptor: CacheDescriptor) -> Bool {
         return storage.withLock { $0[descriptor] != nil }
+    }
+
+    /// Helper method to check if cache contains etag for descriptor
+    func containsEtag(for descriptor: CdnEtagDescriptor) -> Bool {
+        return etagStorage.withLock { $0[descriptor] != nil }
     }
 
     /// Helper method to get all cached descriptors

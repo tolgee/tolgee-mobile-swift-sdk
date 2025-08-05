@@ -7,10 +7,18 @@ struct CacheDescriptor: Sendable, Hashable {
     var cdn: String
 }
 
+struct CdnEtagDescriptor: Sendable, Hashable {
+    var language: String
+    var namespace: String?
+    var cdn: String
+}
+
 protocol CacheProtocol: Sendable {
     func loadRecords(for descriptor: CacheDescriptor) -> Data?
     func saveRecords(_ data: Data, for descriptor: CacheDescriptor) throws
     func clearAll() throws
+    func loadCdnEtag(for descriptor: CdnEtagDescriptor) -> String?
+    func saveCdnEtag(_ descriptor: CdnEtagDescriptor, for cdn: String) throws
 }
 
 final class FileCache: CacheProtocol {
@@ -38,6 +46,23 @@ final class FileCache: CacheProtocol {
         }
 
         return baseCache.appendingPathComponent(safeCdnName)
+    }
+
+    private func etagFileURL(for descriptor: CdnEtagDescriptor) -> URL? {
+        guard let cdnCacheDirectory = cacheDirectory(for: descriptor.cdn) else { return nil }
+
+        let filename: String
+        let baseFilename: String
+
+        if let namespace = descriptor.namespace {
+            baseFilename = "\(namespace)_\(descriptor.language)"
+        } else {
+            baseFilename = descriptor.language
+        }
+
+        filename = "\(baseFilename)_etag.txt"
+
+        return cdnCacheDirectory.appendingPathComponent(filename)
     }
 
     private func cacheFileURL(for descriptor: CacheDescriptor) -> URL? {
@@ -103,5 +128,39 @@ final class FileCache: CacheProtocol {
 
         // Remove the entire cache directory and its contents
         try FileManager.default.removeItem(at: cacheDirectory)
+    }
+
+    func loadCdnEtag(for descriptor: CdnEtagDescriptor) -> String? {
+        guard let etagFileURL = etagFileURL(for: descriptor) else { return nil }
+
+        guard FileManager.default.fileExists(atPath: etagFileURL.path) else {
+            return nil
+        }
+
+        do {
+            let etagData = try Data(contentsOf: etagFileURL)
+            return String(data: etagData, encoding: .utf8)?.trimmingCharacters(
+                in: .whitespacesAndNewlines)
+        } catch {
+            return nil
+        }
+    }
+
+    func saveCdnEtag(_ descriptor: CdnEtagDescriptor, for cdn: String) throws {
+        guard let cdnCacheDirectory = cacheDirectory(for: descriptor.cdn),
+            let etagFileURL = etagFileURL(for: descriptor)
+        else {
+            return
+        }
+
+        // Create CDN-specific cache directory if it doesn't exist
+        try FileManager.default.createDirectory(
+            at: cdnCacheDirectory,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+
+        // Write etag to file (the `cdn` parameter is actually the etag value)
+        try cdn.write(to: etagFileURL, atomically: true, encoding: .utf8)
     }
 }

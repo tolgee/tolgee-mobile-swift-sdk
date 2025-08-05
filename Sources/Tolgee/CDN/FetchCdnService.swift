@@ -1,5 +1,4 @@
 import Foundation
-import OSLog
 
 /// Protocol for URL session to enable mocking
 protocol URLSessionProtocol: Sendable {
