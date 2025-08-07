@@ -91,19 +91,6 @@ public final class Tolgee {
         self.cache = cache
     }
 
-    private func getPreferredLanguage() -> String {
-        // Get the preferred language from the device's locale
-        let preferredLanguage = Locale.preferredLanguages.first ?? "en"
-
-        // Extract just the language code (before any region/script modifiers)
-        let languageCode =
-            Locale(identifier: preferredLanguage).language.languageCode?.identifier ?? "en"
-
-        logger.debug(
-            "Detected preferred language: \(languageCode) from device locale: \(preferredLanguage)")
-        return languageCode
-    }
-
     /// Initializes the Tolgee SDK.
     ///
     /// This method provides flexible initialization options:
@@ -126,7 +113,7 @@ public final class Tolgee {
     /// try await Tolgee.shared.remoteFetch()
     /// ```
     public func initialize(
-        cdn: URL, language: String? = nil, namespaces: Set<String> = [],
+        cdn: URL, language customLanguage: String? = nil, namespaces: Set<String> = [],
         enableDebugLogs: Bool = false
     ) {
 
@@ -137,10 +124,34 @@ public final class Tolgee {
 
         logger.enableDebugLogs = enableDebugLogs
 
-        let language = language ?? getPreferredLanguage()
+        if language == nil {
+            // I think that we'll need to extend this logic to match it with localizations available on the CDN.
+            guard let preferredLanguage = Locale.preferredLanguages.first else {
+                logger.error("Failed to determine preferred language")
+                return
+            }
+
+            guard
+                let languageIdentifier = Locale(identifier: preferredLanguage).language
+                    .languageCode?.identifier
+            else {
+                logger.error(
+                    "Failed to determine language identifier from preferred language \(preferredLanguage)"
+                )
+                return
+            }
+            self.language = languageIdentifier
+            logger.debug("Automatically detected preferred language: \(languageIdentifier)")
+        } else {
+            self.language = customLanguage
+        }
+
+        guard let language else {
+            logger.error("Language must be specified for Tolgee initialization")
+            return
+        }
 
         cdnURL = cdn
-        self.language = language
         self.namespaces = namespaces
 
         // Track whether we found any cached data for this app version
