@@ -313,7 +313,7 @@ public final class Tolgee {
     /// - Throws: An error if the fetch operation fails
     /// - Note: This method requires that Tolgee has been initialized with a CDN URL and language.
     ///   The method will return early if these prerequisites are not met.
-    public func remoteFetch() async throws {
+    public func remoteFetch() async {
         guard let cdnURL, let language, language.isEmpty == false else {
             return
         }
@@ -329,105 +329,106 @@ public final class Tolgee {
             filePaths.append("\(namespace)/\(language).json")  // Namespace files
         }
 
-        // Use the FetchCdnService to get all translation data
-        let fetchService = fetchCdnService
-        let translationData = try await fetchService.fetchFiles(
-            from: cdnURL,
-            filePaths: filePaths
-        )
+        do {
+            let translationData = try await fetchCdnService.fetchFiles(
+                from: cdnURL,
+                filePaths: filePaths)
 
-        // Process the fetched translation data
-        for (filePath, result) in translationData {
+            // Process the fetched translation data
+            for (filePath, result) in translationData {
 
-            let data = result.0
-            guard let response = result.1 as? HTTPURLResponse else {
-                logger.error(
-                    "Invalid response for file path: \(filePath). It's not an HTTP response.")
-                continue
-            }
-
-            // Determine the table name from the file path
-            let table: String
-            if filePath == "\(language).json" {
-                table = ""  // Base table
-            } else {
-                // Extract table name from "table/language.json" format
-                table = String(filePath.prefix(while: { $0 != "/" }))
-            }
-
-            do {
-
-                if response.statusCode == 304 {
-                    logger.debug(
-                        "No changes for table '\(table)' (304 status code), skipping update")
-                    continue
-                } else if response.statusCode != 200 {
+                let data = result.0
+                guard let response = result.1 as? HTTPURLResponse else {
                     logger.error(
-                        "Failed to fetch translations for table '\(table)': HTTP \(response.statusCode)"
-                    )
+                        "Invalid response for file path: \(filePath). It's not an HTTP response.")
                     continue
                 }
 
-                let translations = try JSONParser.loadTranslations(from: data)
-
-                if self.translations[table] == translations {
-                    logger.debug("Translations for table '\(table)' are already up-to-date")
-                    continue
-                }
-
-                self.translations[table] = translations
-
-                // Cache the fetched data
-                let descriptor: CacheDescriptor
-                if table.isEmpty {
-                    descriptor = CacheDescriptor(
-                        language: language, appVersionSignature: self.appVersionSignature,
-                        cdn: cdnURL.absoluteString)
+                // Determine the table name from the file path
+                let table: String
+                if filePath == "\(language).json" {
+                    table = ""  // Base table
                 } else {
-                    descriptor = CacheDescriptor(
-                        language: language, namespace: table,
-                        appVersionSignature: self.appVersionSignature,
-                        cdn: cdnURL.absoluteString)
+                    // Extract table name from "table/language.json" format
+                    table = String(filePath.prefix(while: { $0 != "/" }))
                 }
 
                 do {
-                    try self.cache.saveRecords(data, for: descriptor)
-                } catch {
-                    self.logger.error("Failed to save translations to cache: \(error)")
-                }
 
-                if let etag = response.allHeaderFields["Etag"] as? String {
-                    let etagDescriptor: CdnEtagDescriptor
+                    if response.statusCode == 304 {
+                        logger.debug(
+                            "No changes for table '\(table)' (304 status code), skipping update")
+                        continue
+                    } else if response.statusCode != 200 {
+                        logger.error(
+                            "Failed to fetch translations for table '\(table)': HTTP \(response.statusCode)"
+                        )
+                        continue
+                    }
+
+                    let translations = try JSONParser.loadTranslations(from: data)
+
+                    if self.translations[table] == translations {
+                        logger.debug("Translations for table '\(table)' are already up-to-date")
+                        continue
+                    }
+
+                    self.translations[table] = translations
+
+                    // Cache the fetched data
+                    let descriptor: CacheDescriptor
                     if table.isEmpty {
-                        etagDescriptor = CdnEtagDescriptor(
-                            language: language,
+                        descriptor = CacheDescriptor(
+                            language: language, appVersionSignature: self.appVersionSignature,
                             cdn: cdnURL.absoluteString)
                     } else {
-                        etagDescriptor = CdnEtagDescriptor(
+                        descriptor = CacheDescriptor(
                             language: language, namespace: table,
+                            appVersionSignature: self.appVersionSignature,
                             cdn: cdnURL.absoluteString)
                     }
-                    try self.cache.saveCdnEtag(etagDescriptor, etag: etag)
-                    self.cdnEtags[table] = etag
-                } else {
-                    self.logger.warning(
-                        "No etag header found for \(cdnURL.appending(component: filePath))")
+
+                    do {
+                        try self.cache.saveRecords(data, for: descriptor)
+                    } catch {
+                        self.logger.error("Failed to save translations to cache: \(error)")
+                    }
+
+                    if let etag = response.allHeaderFields["Etag"] as? String {
+                        let etagDescriptor: CdnEtagDescriptor
+                        if table.isEmpty {
+                            etagDescriptor = CdnEtagDescriptor(
+                                language: language,
+                                cdn: cdnURL.absoluteString)
+                        } else {
+                            etagDescriptor = CdnEtagDescriptor(
+                                language: language, namespace: table,
+                                cdn: cdnURL.absoluteString)
+                        }
+                        try self.cache.saveCdnEtag(etagDescriptor, etag: etag)
+                        self.cdnEtags[table] = etag
+                    } else {
+                        self.logger.warning(
+                            "No etag header found for \(cdnURL.appending(component: filePath))")
+                    }
+
+                    logger.debug(
+                        "Cached translations for language: \(language), namespace: \(table.isEmpty ? "base" : table)"
+                    )
+                } catch {
+                    logger.error("Error loading translations for table '\(table)': \(error)")
                 }
-
-                logger.debug(
-                    "Cached translations for language: \(language), namespace: \(table.isEmpty ? "base" : table)"
-                )
-            } catch {
-                logger.error("Error loading translations for table '\(table)': \(error)")
             }
-        }
 
-        lastFetchDate = Date()
-        onTranslationsUpdatedSubscribers.forEach {
-            $0.yield(())
+            lastFetchDate = Date()
+            onTranslationsUpdatedSubscribers.forEach {
+                $0.yield(())
+            }
+            logger.debug(
+                "Translations fetched successfully at \(self.lastFetchDate ?? .distantPast)")
+        } catch {
+            logger.error("Failed to fetch remote translations: \(error)")
         }
-        logger.debug(
-            "Translations fetched successfully at \(self.lastFetchDate ?? .distantPast)")
     }
 
     func loadTranslations(from jsonString: String, table: String = "") throws {
