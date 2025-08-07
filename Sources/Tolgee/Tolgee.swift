@@ -83,10 +83,21 @@ public final class Tolgee {
 
     private var appVersionSignature: String? = nil
 
-    private let onTranslationsUpdatedSubject = PassthroughSubject<Void, Never>()
+    private var onTranslationsUpdatedSubscribers: [ContinuationWrapper<()>] = []
+    public func onTranslationsUpdated() -> AsyncStream<()> {
+        AsyncStream<()> { continuation in
+            let wrapper = ContinuationWrapper<()>(continuation: continuation)
 
-    public var onTranslationsUpdated: AnyPublisher<Void, Never> {
-        onTranslationsUpdatedSubject.eraseToAnyPublisher()
+            self.onTranslationsUpdatedSubscribers.append(wrapper)
+
+            // Handle termination
+            continuation.onTermination = { [weak self] reason in
+                DispatchQueue.main.async { [weak self] in
+                    wrapper.markDead()
+                    self?.onTranslationsUpdatedSubscribers.removeAll { !$0.isAlive }
+                }
+            }
+        }
     }
 
     init(
@@ -412,7 +423,9 @@ public final class Tolgee {
         }
 
         lastFetchDate = Date()
-        onTranslationsUpdatedSubject.send(())
+        onTranslationsUpdatedSubscribers.forEach {
+            $0.yield(())
+        }
         logger.debug(
             "Translations fetched successfully at \(self.lastFetchDate ?? .distantPast)")
     }

@@ -22,7 +22,17 @@ import Combine
 @MainActor
 public final class TolgeeSwiftUIUpdater: ObservableObject {
 
+    private var task: Task<Void, Never>? = nil
+
     public init() {
-        self.objectWillChange.send()
+        task = Task { @MainActor [weak self] in
+            for await _ in Tolgee.shared.onTranslationsUpdated() {
+                self?.objectWillChange.send()
+            }
+        }
+    }
+
+    deinit {
+        task?.cancel()
     }
 }
