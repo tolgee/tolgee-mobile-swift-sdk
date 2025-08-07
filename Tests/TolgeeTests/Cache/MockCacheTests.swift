@@ -3,7 +3,7 @@ import Testing
 
 @testable import Tolgee
 
-struct CacheTests {
+struct MockCacheTests {
 
     let cdnURL = URL(string: "https://cdn.example.com")!.absoluteString
 
