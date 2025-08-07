@@ -355,13 +355,19 @@ public final class Tolgee {
                     table = String(filePath.prefix(while: { $0 != "/" }))
                 }
 
+                let returnedEtag = response.allHeaderFields["Etag"] as? String
+
                 do {
 
-                    if response.statusCode == 304 {
+                    if let returnedEtag, returnedEtag.isEmpty == false,
+                        returnedEtag == cdnEtags[table]
+                    {
+                        // I don't feel comfortable disabling the default caching and redirect handling of URLSession
+                        // so let's just compare the returned Etag with the last known one and return early if they match.
                         logger.debug(
-                            "No changes for table '\(table)' (304 status code), skipping update")
+                            "No changes for table '\(table)' based on ETag, skipping update")
                         continue
-                    } else if response.statusCode != 200 {
+                    } else if response.statusCode >= 400 {
                         logger.error(
                             "Failed to fetch translations for table '\(table)': HTTP \(response.statusCode)"
                         )

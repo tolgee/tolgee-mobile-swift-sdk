@@ -32,9 +32,8 @@ final class FetchCdnService: Sendable {
                 let urlSession = self.urlSession
                 group.addTask {
                     let url = cdnURL.appending(component: file.path)
-                    let request = URLRequest(url: url)
+                    var request = URLRequest(url: url)
                     if let etag = file.etag {
-                        var request = URLRequest(url: url)
                         request.setValue(etag, forHTTPHeaderField: "If-None-Match")
                     }
                     let result = try await urlSession.data(for: request)
