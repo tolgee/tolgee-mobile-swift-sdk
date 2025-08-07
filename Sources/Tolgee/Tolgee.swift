@@ -324,15 +324,17 @@ public final class Tolgee {
             ))
 
         // Construct file paths for all translation files
-        var filePaths: [String] = ["\(language).json"]  // Base language file
+        var files: [FetchCdnService.CdnFile] = [
+            .init(path: "\(language).json", etag: cdnEtags[""])
+        ]  // Base language file
         for namespace in namespaces {
-            filePaths.append("\(namespace)/\(language).json")  // Namespace files
+            files.append(.init(path: "\(namespace)/\(language).json", etag: cdnEtags[namespace]))  // Namespace files
         }
 
         do {
             let translationData = try await fetchCdnService.fetchFiles(
                 from: cdnURL,
-                filePaths: filePaths)
+                files: files)
 
             // Process the fetched translation data
             for (filePath, result) in translationData {
