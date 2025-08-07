@@ -11,7 +11,6 @@ public enum TolgeeError: Error {
 /// Tolgee provides a modern localization solution that supports:
 /// - Remote translation loading from CDN
 /// - Namespace-based translation organization
-/// - Automatic caching and background updates
 /// - Fallback to bundle-based localizations
 /// - Automatic language detection from device settings
 ///
@@ -23,7 +22,7 @@ public enum TolgeeError: Error {
 /// )
 ///
 /// // Fetch latest translations
-/// try await Tolgee.shared.remoteFetch()
+/// await Tolgee.shared.remoteFetch()
 ///
 /// // Use translations in your app
 /// let greeting = Tolgee.shared.translate("hello_world")
@@ -32,23 +31,6 @@ public enum TolgeeError: Error {
 @MainActor
 public final class Tolgee {
     /// Shared singleton instance of Tolgee for convenient access throughout your app.
-    ///
-    /// This is the recommended way to access Tolgee functionality. The shared instance
-    /// is configured with default URL session and file-based caching.
-    ///
-    /// ## Usage
-    /// ```swift
-    /// // Initialize with automatic language detection (production)
-    /// Tolgee.shared.initialize()
-    /// try await Tolgee.shared.remoteFetch()
-    ///
-    /// // Initialize with specific language (testing)
-    /// Tolgee.shared.initialize(language: "en")
-    /// try await Tolgee.shared.remoteFetch()
-    ///
-    /// // Use translations
-    /// let text = Tolgee.shared.translate("my_key")
-    /// ```
     public static let shared = Tolgee(
         urlSession: URLSession(configuration: .default),
         cache: FileCache(),
@@ -62,7 +44,6 @@ public final class Tolgee {
     private var language: String?
     private var namespaces: Set<String> = []
 
-    // Logger for Tolgee operations
     private let logger = TolgeeLog()
 
     private let fetchCdnService: FetchCdnService
@@ -84,6 +65,7 @@ public final class Tolgee {
     private var appVersionSignature: String? = nil
 
     private var onTranslationsUpdatedSubscribers: [ContinuationWrapper<()>] = []
+    /// A stream that allows observing when translations are updated.
     public func onTranslationsUpdated() -> AsyncStream<()> {
         AsyncStream<()> { continuation in
             let wrapper = ContinuationWrapper<()>(continuation: continuation)
@@ -122,16 +104,15 @@ public final class Tolgee {
         return languageCode
     }
 
-    /// Initializes the Tolgee SDK with automatic language detection or manual override.
+    /// Initializes the Tolgee SDK.
     ///
     /// This method provides flexible initialization options:
     /// - **Automatic language detection** (recommended): When `language` is `nil`, automatically detects
     ///   the user's preferred language from device settings
     /// - **Manual language specification**: When `language` is provided, uses that specific language
-    ///   regardless of device settings (useful for testing)
+    ///   regardless of device settings
     ///
-    /// The method loads cached translations immediately if available and initiates a background
-    /// fetch for fresh translations from the CDN.
+    /// The method loads cached translations immediately if available.
     ///
     /// - Parameters:
     ///   - cdn: The base URL of the Tolgee CDN where translation files are hosted (optional)
@@ -140,44 +121,10 @@ public final class Tolgee {
     ///
     /// ## Usage
     /// ```swift
-    /// // Automatic language detection (recommended for production)
-    /// Tolgee.shared.initialize()
-    /// try await Tolgee.shared.remoteFetch()
-    ///
-    /// // Automatic detection with CDN
     /// let cdnURL = URL(string: "https://cdn.tolgee.io/your-project-id")!
     /// Tolgee.shared.initialize(cdn: cdnURL)
     /// try await Tolgee.shared.remoteFetch()
-    ///
-    /// // Manual language specification (useful for testing)
-    /// Tolgee.shared.initialize(language: "en")
-    /// try await Tolgee.shared.remoteFetch()
-    ///
-    /// // Full configuration with CDN, language, and namespaces
-    /// Tolgee.shared.initialize(
-    ///     cdn: cdnURL,
-    ///     language: "es",
-    ///     namespaces: ["buttons", "messages", "errors"]
-    /// )
-    /// try await Tolgee.shared.remoteFetch()
     /// ```
-    ///
-    /// ## Language Detection
-    /// When `language` is `nil`, the method:
-    /// - Reads the user's preferred language from `Locale.preferredLanguages`
-    /// - Extracts the language code (e.g., "es" from "es-ES")
-    /// - Provides debug logging to show detected language
-    /// - Falls back to "en" if detection fails
-    ///
-    /// ## Behavior
-    /// - **Automatic language**: Respects user's device language settings
-    /// - **Manual language**: Uses specified language regardless of device settings
-    /// - **Caching**: Loads cached translations immediately if available
-    /// - **Initialization guard**: Prevents multiple initializations (subsequent calls are ignored)
-    ///
-    /// - Note: For production apps, omit the `language` parameter to provide the best user experience.
-    ///   Use explicit `language` values primarily for testing specific language scenarios.
-    ///   After initialization, call `remoteFetch()` to update translations from the CDN.
     public func initialize(
         cdn: URL, language: String? = nil, namespaces: Set<String> = [],
         enableDebugLogs: Bool = false
@@ -287,31 +234,7 @@ public final class Tolgee {
     /// language and namespaces. It will update cached translations and notify observers when
     /// the fetch completes.
     ///
-    /// The method performs the following operations:
-    /// - Constructs file paths for all required translation files
-    /// - Fetches translation data from the CDN
-    /// - Processes and caches the fetched translations
-    /// - Updates the `lastFetchDate` property
-    /// - Sends notifications via `onTranslationsUpdated`
-    ///
-    /// ## Usage
-    /// ```swift
-    /// // Initialize Tolgee first
-    /// Tolgee.shared.initialize(cdn: cdnURL, language: "en")
-    ///
-    /// // Explicitly fetch latest translations
-    /// try await Tolgee.shared.remoteFetch()
-    ///
-    /// // With error handling
-    /// do {
-    ///     try await Tolgee.shared.remoteFetch()
-    /// } catch {
-    ///     print("Failed to fetch translations: \(error)")
-    /// }
-    /// ```
-    ///
-    /// - Throws: An error if the fetch operation fails
-    /// - Note: This method requires that Tolgee has been initialized with a CDN URL and language.
+    /// - Note: This method requires that Tolgee has been initialized with a CDN URL.
     ///   The method will return early if these prerequisites are not met.
     public func remoteFetch() async {
         guard let cdnURL, let language, language.isEmpty == false else {
