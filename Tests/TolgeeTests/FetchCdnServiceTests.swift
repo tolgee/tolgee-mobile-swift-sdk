@@ -163,4 +163,33 @@ struct FetchCdnServiceTests {
         let requestedURLs = await mockSession.requestedURLs
         #expect(!requestedURLs.isEmpty)
     }
+
+    @Test func testFetchFilesWithETag() async throws {
+        let mockSession = MockURLSession()
+        let service = FetchCdnService(urlSession: mockSession)
+
+        // Set up mock response
+        let testURL = cdnURL.appending(component: "en.json")
+        let testETag = "W/\"abc123def456\""
+        try await mockSession.setMockJSONResponse(
+            for: testURL, json: ["Hello": "Hello"])
+
+        // Test fetching with ETag
+        let results = try await service.fetchFiles(
+            from: cdnURL,
+            files: [.init(path: "en.json", etag: testETag)]
+        )
+
+        // Should have translation data
+        #expect(results["en.json"] != nil)
+        #expect(results["en.json"]!.0.count > 0)
+
+        // Verify the correct URL was requested
+        let requestedURLs = await mockSession.requestedURLs
+        #expect(requestedURLs.contains(testURL))
+
+        // Verify that the ETag was included in the request headers
+        let lastRequest = await mockSession.lastRequest
+        #expect(lastRequest?.value(forHTTPHeaderField: "If-None-Match") == testETag)
+    }
 }

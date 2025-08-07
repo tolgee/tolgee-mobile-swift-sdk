@@ -6,6 +6,7 @@ import Foundation
 actor MockURLSession: URLSessionProtocol {
     var mockResponses: [URL: Result<Data, Error>] = [:]
     var requestedURLs: [URL] = []
+    var lastRequest: URLRequest?
 
     init() {}
 
@@ -14,6 +15,7 @@ actor MockURLSession: URLSessionProtocol {
             throw URLError(.badURL)
         }
 
+        lastRequest = request
         requestedURLs.append(url)
 
         guard let response = mockResponses[url] else {
@@ -61,5 +63,6 @@ actor MockURLSession: URLSessionProtocol {
     func reset() {
         mockResponses.removeAll()
         requestedURLs.removeAll()
+        lastRequest = nil
     }
 }
