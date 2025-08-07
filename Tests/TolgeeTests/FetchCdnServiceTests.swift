@@ -5,7 +5,7 @@ import Testing
 
 struct FetchCdnServiceTests {
 
-    let cdnURL = URL(string: "https://cdntest.tolg.ee/47b95b14388ff538b9f7159d0daf92d2")!
+    let cdnURL = URL(string: "https://cdn.example.com")!
 
     @Test func testFetchFilesBasic() async throws {
         let mockSession = MockURLSession()
@@ -19,7 +19,7 @@ struct FetchCdnServiceTests {
         // Test fetching basic language file
         let results = try await service.fetchFiles(
             from: cdnURL,
-            filePaths: ["cs.json"]
+            files: [.init(path: "cs.json")]
         )
 
         // Should have base translation data
@@ -46,7 +46,7 @@ struct FetchCdnServiceTests {
         // Test fetching with multiple file paths
         let results = try await service.fetchFiles(
             from: cdnURL,
-            filePaths: ["cs.json", "Localizable2/cs.json"]
+            files: [.init(path: "cs.json"), .init(path: "Localizable2/cs.json")]
         )
 
         // Should have both files
@@ -73,7 +73,7 @@ struct FetchCdnServiceTests {
         await #expect(throws: (any Error).self) {
             try await service.fetchFiles(
                 from: cdnURL,
-                filePaths: ["invalid-file.json"]
+                files: [.init(path: "invalid-file.json")]
             )
         }
 
@@ -95,7 +95,7 @@ struct FetchCdnServiceTests {
         await #expect(throws: (any Error).self) {
             try await service.fetchFiles(
                 from: invalidURL,
-                filePaths: ["cs.json"]
+                files: [.init(path: "cs.json")]
             )
         }
 
@@ -120,7 +120,7 @@ struct FetchCdnServiceTests {
         // Fetch and verify we can parse the JSON
         let results = try await service.fetchFiles(
             from: cdnURL,
-            filePaths: ["cs.json"]
+            files: [.init(path: "cs.json")]
         )
 
         guard let baseData = results["cs.json"] else {
@@ -155,7 +155,7 @@ struct FetchCdnServiceTests {
         await #expect(throws: (any Error).self) {
             try await service.fetchFiles(
                 from: cdnURL,
-                filePaths: ["cs.json", "NonExistentFile.json"]
+                files: [.init(path: "cs.json"), .init(path: "NonExistentFile.json")]
             )
         }
 

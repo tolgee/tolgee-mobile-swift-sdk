@@ -51,7 +51,7 @@ struct TolgeeTestsCDN {
             tolgee.initialize(cdn: cdnURL, language: "cs", namespaces: ["Localizable2"])
 
             // Explicitly fetch translations from CDN
-            try await tolgee.remoteFetch()
+            await tolgee.remoteFetch()
 
             // Test that translations were loaded from mocked CDN
             let simpleString = tolgee.translate("Hello, world!", locale: locale)
@@ -82,7 +82,7 @@ struct TolgeeTestsCDN {
             tolgee.initialize(cdn: cdnURL, language: "cs", namespaces: ["Localizable2"])
 
             // Explicitly fetch translations from CDN
-            try await tolgee.remoteFetch()
+            await tolgee.remoteFetch()
 
             // Test that translations were loaded from CDN
             let simpleString = tolgee.translate("Hello, world!", locale: locale)
