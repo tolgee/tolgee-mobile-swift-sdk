@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+        
+    - name: Cache Swift Package Manager
+      uses: actions/cache@v3
+      with:
+        path: .build
+        key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
+          
+    - name: Build
+      run: swift build
+      
+    - name: Run tests with coverage
+      run: |
+        swift test --enable-code-coverage
+        
+    - name: Generate and process coverage report
+      run: |
+        # Find the test binary
+        TEST_BINARY=$(find .build -name "*PackageTests" -type f | head -1)
+        PROFDATA_FILE=$(find .build -name "*.profdata" | head -1)
+        
+        if [[ -n "$TEST_BINARY" && -n "$PROFDATA_FILE" ]]; then
+          echo "Found test binary: $TEST_BINARY"
+          echo "Found profdata: $PROFDATA_FILE"
+          
+          # Generate coverage report in text format
+          xcrun llvm-cov report "$TEST_BINARY" \
+            -instr-profile="$PROFDATA_FILE" \
+            -ignore-filename-regex=".*Tests.*" \
+            -use-color=false > coverage_report.txt
+            
+          # Display coverage summary
+          echo "=== Coverage Report ==="
+          cat coverage_report.txt
+          
+          # Generate lcov format for upload
+          xcrun llvm-cov export "$TEST_BINARY" \
+            -instr-profile="$PROFDATA_FILE" \
+            -format="lcov" \
+            -ignore-filename-regex=".*Tests.*" > coverage.lcov
+        else
+          echo "Could not find test binary or profdata file"
+          echo "No coverage data available" > coverage_report.txt
+        fi
+        
+    - name: Upload coverage to Codecov
+      if: success()
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.lcov
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        
+    - name: Check coverage threshold
+      run: |
+        if [[ -f coverage_report.txt ]]; then
+          # Extract coverage from the report
+          coverage=$(tail -1 coverage_report.txt | awk '{print $4}' | sed 's/%//')
+        else
+          coverage=0
+        fi
+        
+        threshold=70
+        
+        echo "Code coverage: ${coverage}%"
+        echo "Required threshold: ${threshold}%"
+        
+        # Save coverage for later steps
+        echo "COVERAGE_RESULT=${coverage}" >> $GITHUB_ENV
+        
+        if (( $(echo "$coverage >= $threshold" | bc -l) )); then
+          echo "✅ Code coverage ${coverage}% meets threshold ${threshold}%"
+        else
+          echo "❌ Code coverage ${coverage}% is below threshold ${threshold}%"
+          echo "Please add more tests to improve coverage."
+          exit 1
+        fi
+        
+    - name: Comment coverage on PR
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const coverage = process.env.COVERAGE_RESULT || '0';
+          const threshold = 70;
+          const emoji = coverage >= threshold ? '✅' : '❌';
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `${emoji} **Code Coverage Report**\n\nCurrent coverage: **${coverage}%**\nRequired threshold: **${threshold}%**\n\n${coverage >= threshold ? 'Coverage check passed!' : 'Coverage is below threshold. Please add more tests.'}`
+          });
+      env:
+        COVERAGE_RESULT: ${{ env.COVERAGE_RESULT }}
