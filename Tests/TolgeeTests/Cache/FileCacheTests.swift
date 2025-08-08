@@ -3,6 +3,7 @@ import Testing
 
 @testable import Tolgee
 
+@Suite(.serialized)  // Avoid file access conflicts
 struct FileCacheTests {
 
     let cdnURL = URL(string: "https://cdn.example.com")!.absoluteString
