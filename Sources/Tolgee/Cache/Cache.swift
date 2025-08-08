@@ -25,15 +25,33 @@ final class FileCache: CacheProtocol {
     private let cacheDirectoryName = "TolgeeCache"
 
     private var cacheDirectory: URL? {
-        guard
-            let appSupportDir = FileManager.default.urls(
-                for: .applicationSupportDirectory,
-                in: .userDomainMask
-            ).first
-        else {
-            return nil
-        }
-        return appSupportDir.appendingPathComponent(cacheDirectoryName)
+        #if os(macOS)
+            guard
+                let cachesDir = FileManager.default.urls(
+                    for: .cachesDirectory,
+                    in: .userDomainMask
+                ).first
+            else {
+                return nil
+            }
+
+            // Get bundle identifier or use fallback
+            let bundleId = Bundle.main.bundleIdentifier ?? "TolgeeTests"
+            return cachesDir.appendingPathComponent(bundleId).appendingPathComponent(
+                cacheDirectoryName)
+        #else
+            // For iOS, use application support directory.
+            // It is not backed up to iCloud and iOS is more aggressive about clearing the caches directory.
+            guard
+                let appSupportDir = FileManager.default.urls(
+                    for: .applicationSupportDirectory,
+                    in: .userDomainMask
+                ).first
+            else {
+                return nil
+            }
+            return appSupportDir.appendingPathComponent(cacheDirectoryName)
+        #endif
     }
 
     private func cacheDirectory(for cdn: String) -> URL? {
