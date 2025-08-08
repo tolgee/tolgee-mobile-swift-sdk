@@ -1,15 +1,45 @@
-# [Tolgee iOS SDK](https://tolgee.io/)
+# Tolgee Mobile Swift SDK (Alpha) 🐁
 
-[![CI](https://github.com/petrpavlik/tolgee-ios/actions/workflows/ci.yml/badge.svg)](https://github.com/petrpavlik/tolgee-ios/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/petrpavlik/tolgee-ios/branch/main/graph/badge.svg)](https://codecov.io/gh/petrpavlik/tolgee-ios)
-[![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
-[![Platforms](https://img.shields.io/badge/Platforms-iOS%20|%20macOS%20|%20tvOS%20|%20watchOS-lightgrey.svg)](https://github.com/petrpavlik/tolgee-ios)
+[![Tolgee](https://img.shields.io/badge/Tolgee-f06695)](https://tolgee.io/)
+![Android](https://img.shields.io/badge/Android-Supported-green?logo=android)
+![language](https://img.shields.io/github/languages/top/tolgee/tolgee-mobile-kotlin-sdk)
+[![github release](https://img.shields.io/github/v/release/tolgee/tolgee-mobile-kotlin-sdk?label=GitHub%20Release)](https://github.com/tolgee/tolgee-mobile-kotlin-sdk/releases/latest)
+[![licence](https://img.shields.io/badge/license-Apache%202%20-blue)](https://github.com/tolgee/tolgee-mobile-kotlin-sdk/blob/master/LICENSE)
+[![github stars](https://img.shields.io/github/stars/tolgee/tolgee-mobile-kotlin-sdk?style=social&label=Tolgee%20Mobile%20Kotlin%20SDK)](https://github.com/tolgee/tolgee-mobile-kotlin-sdk)
+[![github stars](https://img.shields.io/github/stars/tolgee/tolgee-platform?style=social&label=Tolgee%20Platform)](https://github.com/tolgee/tolgee-platform)
+[![Github discussions](https://img.shields.io/github/discussions/tolgee/tolgee-platform)](https://github.com/tolgee/tolgee-platform/discussions)
+[![Dev.to](https://img.shields.io/badge/Dev.to-tolgee_i18n?logo=devdotto&logoColor=white)](https://dev.to/tolgee_i18n)
+[![Read the Docs](https://img.shields.io/badge/Read%20the%20Docs-8CA1AF?logo=readthedocs&logoColor=fff)](https://docs.tolgee.io/)
+[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=fff)](https://tolg.ee/slack)
+[![YouTube](https://img.shields.io/badge/YouTube-%23FF0000.svg?logo=YouTube&logoColor=white)](https://www.youtube.com/@tolgee)
+[![LinkedIn](https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff)](https://www.linkedin.com/company/tolgee/)
+[![X](https://img.shields.io/badge/X-%23000000.svg?logo=X&logoColor=white)](https://x.com/Tolgee_i18n)
 
-**Tolgee for iOS/macOS/tvOS/watchOS** is a comprehensive localization SDK that connects your Apple platform apps to the [Tolgee localization platform](https://tolgee.io). 
+## What is Tolgee?
 
-Tolgee is an open-source alternative to Crowdin, Phrase, or Lokalise with powerful developer-friendly features.
+[Tolgee](https://tolgee.io/) is a powerful localization platform that simplifies the translation process for your applications.
+This SDK provides integration for Kotlin-based projects, with a primary focus on Android.
+
+Currently, Android is fully supported, but any Kotlin-based codebase can in theory use this library.
+
+## Features
+
+- **Over-the-air updates**: Update your translations without releasing a new app version
+
+
+## Installation
+
+> [!NOTE]
+> For managing static translations (used as fallback), check out [tolgee-cli](https://github.com/tolgee/tolgee-cli).
+> It provides tools for updating and syncing your static translation files.
+>
+> In each demo project you can find an example of `.tolgeerc` configuration file.
+
+
 
 ## 🚀 Quick Start
+
+Here's a quick example of initializing Tolgee in an iOS application:
 
 ```swift
 import Tolgee
@@ -247,7 +277,6 @@ let text = Tolgee.shared.translate("offline_message") // Always works
 
 - **Swift:** 6.0+
 - **Xcode:** 15.0+
-- **Swift Package Manager:** 5.7+
 
 ## 🤝 Why Choose Tolgee?
 
