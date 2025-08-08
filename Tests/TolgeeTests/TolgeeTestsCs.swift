@@ -4,117 +4,141 @@ import Testing
 @testable import Tolgee
 
 @MainActor
+final class TestContext {
+  let tolgee: Tolgee
+  let cache: MockCache
+  let urlSession: MockURLSession
+
+  init() {
+    self.cache = MockCache()
+    self.urlSession = MockURLSession()
+    self.tolgee = Tolgee(
+      urlSession: urlSession,
+      cache: cache,
+      appVersionSignature: "1.0.0-1"
+    )
+  }
+}
+
+@MainActor
 struct TolgeeTestsCs {
 
-    // Czech test data with Apple-style complex plural forms
-    let testTranslationsJSON = """
-        {
-          "Hello, world!": "Ahoj, světe!",
-          "I have %lf pears": {
-            "variations": {
-              "plural": {
-                "one": "Mám %%lf hrušku",
-                "few": "Mám %%lf hrušky",
-                "other": "Mám %%lf hrušek"
-              }
-            }
-          },
-          "I have %lld apples": {
-            "variations": {
-              "plural": {
-                "one": "Mám %lld jablko",
-                "few": "Mám %lld jablka",
-                "other": "Mám %lld jablek",
-                "many": "Mám %lld jablek"
-              }
-            }
-          },
-          "My name is %@": "Jmenuji se %@",
-          "Redraw": "Překreslit"
+  // Czech test data with Apple-style complex plural forms
+  let testTranslationsJSON = """
+    {
+      "Hello, world!": "Ahoj, světe!",
+      "I have %lf pears": {
+        "variations": {
+          "plural": {
+            "one": "Mám %%lf hrušku",
+            "few": "Mám %%lf hrušky",
+            "other": "Mám %%lf hrušek"
+          }
         }
-        """
-
-    @Test func testLoadCzechTranslationsFromJSON() throws {
-        let tolgee = Tolgee.shared
-        try tolgee.loadTranslations(from: testTranslationsJSON)
-
-        // Test basic Czech translation without arguments
-        let greeting = tolgee.translate("Hello, world!")
-        #expect(greeting == "Ahoj, světe!")
-    }
-
-    @Test func testCzechSimplePlaceholderReplacement() throws {
-        let tolgee = Tolgee.shared
-        try tolgee.loadTranslations(from: testTranslationsJSON)
-
-        // Test Czech name replacement
-        let nameTranslation = tolgee.translate("My name is %@", "Jan")
-        #expect(nameTranslation == "Jmenuji se Jan")
-
-        let anotherName = tolgee.translate("My name is %@", "Marie")
-        #expect(anotherName == "Jmenuji se Marie")
-    }
-
-    @Test func testCzechPluralFormsWithHashReplacement() throws {
-        let tolgee = Tolgee.shared
-        try tolgee.loadTranslations(from: testTranslationsJSON)
-        let czechLocale = Locale(identifier: "cs_CZ")
-
-        if #available(macOS 15.4, *) {
-
-            // Test Czech singular form (1)
-            let oneApple = tolgee.translate("I have %lld apples", 1, locale: czechLocale)
-            #expect(oneApple == "Mám 1 jablko")
-
-            // Test Czech few form (2-4) - Now properly handled!
-            let fewApples = tolgee.translate("I have %lld apples", 3, locale: czechLocale)
-            #expect(fewApples == "Mám 3 jablka")
-
-            // Test Czech plural form (5+)
-            let manyApples = tolgee.translate("I have %lld apples", 5, locale: czechLocale)
-            #expect(manyApples == "Mám 5 jablek")
-
-            // Test zero (should use plural/other)
-            let zeroApples = tolgee.translate("I have %lld apples", 0, locale: czechLocale)
-            #expect(zeroApples == "Mám 0 jablek")
-
-        } else {
-            #expect(Bool(false))  // Skip this test on older versions
+      },
+      "I have %lld apples": {
+        "variations": {
+          "plural": {
+            "one": "Mám %lld jablko",
+            "few": "Mám %lld jablka",
+            "other": "Mám %lld jablek",
+            "many": "Mám %lld jablek"
+          }
         }
+      },
+      "My name is %@": "Jmenuji se %@",
+      "Redraw": "Překreslit"
     }
+    """
 
-    @Test func testCzechPluralFormsWithPercentFormatting() throws {
-        let tolgee = Tolgee.shared
-        try tolgee.loadTranslations(from: testTranslationsJSON)
-        let czechLocale = Locale(identifier: "cs_CZ")
+  @Test func testLoadCzechTranslationsFromJSON() throws {
 
-        if #available(macOS 15.4, *) {
-            // Test Czech singular form with double
-            let onePear = tolgee.translate("I have %lf pears", 1.0, locale: czechLocale)
-            #expect(onePear == "Mám 1.0 hrušku")
+    let context = TestContext()
+    let tolgee = context.tolgee
 
-            // Test Czech few form with double
-            let fewPears = tolgee.translate("I have %lf pears", 3.0, locale: czechLocale)
-            #expect(fewPears == "Mám 3.0 hrušky")
+    try tolgee.loadTranslations(from: testTranslationsJSON)
 
-            // Test Czech plural form with double
-            let multiplePears = tolgee.translate("I have %lf pears", 2.5, locale: czechLocale)
-            #expect(multiplePears == "Mám 2.5 hrušek")  // Non-integer should use "other"
+    // Test basic Czech translation without arguments
+    let greeting = tolgee.translate("Hello, world!")
+    #expect(greeting == "Ahoj, světe!")
+  }
 
-            // Test zero (should use plural/other)
-            let zeroPears = tolgee.translate("I have %lf pears", 0.0, locale: czechLocale)
-            #expect(zeroPears == "Mám 0.0 hrušek")
-        } else {
-            #expect(Bool(false))  // Skip this test on older versions
-        }
+  @Test func testCzechSimplePlaceholderReplacement() throws {
+    let context = TestContext()
+    let tolgee = context.tolgee
+    try tolgee.loadTranslations(from: testTranslationsJSON)
+
+    // Test Czech name replacement
+    let nameTranslation = tolgee.translate("My name is %@", "Jan")
+    #expect(nameTranslation == "Jmenuji se Jan")
+
+    let anotherName = tolgee.translate("My name is %@", "Marie")
+    #expect(anotherName == "Jmenuji se Marie")
+  }
+
+  @Test func testCzechPluralFormsWithHashReplacement() throws {
+    let context = TestContext()
+    let tolgee = context.tolgee
+    try tolgee.loadTranslations(from: testTranslationsJSON)
+    let czechLocale = Locale(identifier: "cs_CZ")
+
+    if #available(macOS 15.4, *) {
+
+      // Test Czech singular form (1)
+      let oneApple = tolgee.translate("I have %lld apples", 1, locale: czechLocale)
+      #expect(oneApple == "Mám 1 jablko")
+
+      // Test Czech few form (2-4) - Now properly handled!
+      let fewApples = tolgee.translate("I have %lld apples", 3, locale: czechLocale)
+      #expect(fewApples == "Mám 3 jablka")
+
+      // Test Czech plural form (5+)
+      let manyApples = tolgee.translate("I have %lld apples", 5, locale: czechLocale)
+      #expect(manyApples == "Mám 5 jablek")
+
+      // Test zero (should use plural/other)
+      let zeroApples = tolgee.translate("I have %lld apples", 0, locale: czechLocale)
+      #expect(zeroApples == "Mám 0 jablek")
+
+    } else {
+      #expect(Bool(false))  // Skip this test on older versions
     }
+  }
 
-    @Test func testCzechMissingTranslationFallback() throws {
-        let tolgee = Tolgee.shared
-        try tolgee.loadTranslations(from: testTranslationsJSON)
+  @Test func testCzechPluralFormsWithPercentFormatting() throws {
+    let context = TestContext()
+    let tolgee = context.tolgee
+    try tolgee.loadTranslations(from: testTranslationsJSON)
+    let czechLocale = Locale(identifier: "cs_CZ")
 
-        // Test with a key that doesn't exist (should fallback to NSLocalizedString)
-        let missingKey = tolgee.translate("nonexistent.key")
-        #expect(missingKey == "nonexistent.key")  // NSLocalizedString returns the key if no translation found
+    if #available(macOS 15.4, *) {
+      // Test Czech singular form with double
+      let onePear = tolgee.translate("I have %lf pears", 1.0, locale: czechLocale)
+      #expect(onePear == "Mám 1.0 hrušku")
+
+      // Test Czech few form with double
+      let fewPears = tolgee.translate("I have %lf pears", 3.0, locale: czechLocale)
+      #expect(fewPears == "Mám 3.0 hrušky")
+
+      // Test Czech plural form with double
+      let multiplePears = tolgee.translate("I have %lf pears", 2.5, locale: czechLocale)
+      #expect(multiplePears == "Mám 2.5 hrušek")  // Non-integer should use "other"
+
+      // Test zero (should use plural/other)
+      let zeroPears = tolgee.translate("I have %lf pears", 0.0, locale: czechLocale)
+      #expect(zeroPears == "Mám 0.0 hrušek")
+    } else {
+      #expect(Bool(false))  // Skip this test on older versions
     }
+  }
+
+  @Test func testCzechMissingTranslationFallback() throws {
+    let context = TestContext()
+    let tolgee = context.tolgee
+    try tolgee.loadTranslations(from: testTranslationsJSON)
+
+    // Test with a key that doesn't exist (should fallback to NSLocalizedString)
+    let missingKey = tolgee.translate("nonexistent.key")
+    #expect(missingKey == "nonexistent.key")  // NSLocalizedString returns the key if no translation found
+  }
 }
