@@ -82,6 +82,10 @@ public final class Tolgee {
         }
     }
 
+    func onLogMessage() -> AsyncStream<LogMessage> {
+        logger.onLogMessage()
+    }
+
     init(
         urlSession: URLSessionProtocol, cache: CacheProtocol,
         appVersionSignature: String?
@@ -350,7 +354,7 @@ public final class Tolgee {
                         try self.cache.saveCdnEtag(etagDescriptor, etag: etag)
                         self.cdnEtags[table] = etag
                     } else {
-                        self.logger.warning(
+                        self.logger.info(
                             "No etag header found for \(cdnURL.appending(component: filePath))")
                     }
 
