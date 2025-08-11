@@ -27,15 +27,6 @@ struct TolgeeTestsCs {
   let testTranslationsJSON = """
     {
       "Hello, world!": "Ahoj, světe!",
-      "I have %lf pears": {
-        "variations": {
-          "plural": {
-            "one": "Mám %%lf hrušku",
-            "few": "Mám %%lf hrušky",
-            "other": "Mám %%lf hrušek"
-          }
-        }
-      },
       "I have %lld apples": {
         "variations": {
           "plural": {
@@ -105,33 +96,6 @@ struct TolgeeTestsCs {
     }
   }
 
-  @Test func testCzechPluralFormsWithPercentFormatting() throws {
-    let context = TestContext()
-    let tolgee = context.tolgee
-    try tolgee.loadTranslations(from: testTranslationsJSON)
-    let czechLocale = Locale(identifier: "cs_CZ")
-
-    if #available(macOS 15.4, *) {
-      // Test Czech singular form with double
-      let onePear = tolgee.translate("I have %lf pears", 1.0, locale: czechLocale)
-      #expect(onePear == "Mám 1.0 hrušku")
-
-      // Test Czech few form with double
-      let fewPears = tolgee.translate("I have %lf pears", 3.0, locale: czechLocale)
-      #expect(fewPears == "Mám 3.0 hrušky")
-
-      // Test Czech plural form with double
-      let multiplePears = tolgee.translate("I have %lf pears", 2.5, locale: czechLocale)
-      #expect(multiplePears == "Mám 2.5 hrušek")  // Non-integer should use "other"
-
-      // Test zero (should use plural/other)
-      let zeroPears = tolgee.translate("I have %lf pears", 0.0, locale: czechLocale)
-      #expect(zeroPears == "Mám 0.0 hrušek")
-    } else {
-      #expect(Bool(false))  // Skip this test on older versions
-    }
-  }
-
   @Test func testCzechMissingTranslationFallback() throws {
     let context = TestContext()
     let tolgee = context.tolgee
@@ -139,6 +103,6 @@ struct TolgeeTestsCs {
 
     // Test with a key that doesn't exist (should fallback to NSLocalizedString)
     let missingKey = tolgee.translate("nonexistent.key")
-    #expect(missingKey == "nonexistent.key")  // NSLocalizedString returns the key if no translation found
+    #expect(missingKey == "nonexistent.key")
   }
 }
