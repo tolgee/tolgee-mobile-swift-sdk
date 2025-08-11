@@ -427,7 +427,9 @@ public final class Tolgee {
         let locale = Locale.current
 
         // First try to get translation from loaded translations
-        if let translationEntry = translations[table ?? ""]?[key] {
+        if let translationEntry = translations[table ?? ""]?[key],
+            language == locale.language.languageCode?.identifier
+        {
             switch translationEntry {
             case .simple(let string):
                 // If we have arguments, try to format the string
@@ -520,7 +522,9 @@ public final class Tolgee {
         -> String
     {
         // First try to get translation from loaded translations
-        if let translationEntry = translations[table ?? ""]?[key] {
+        if let translationEntry = translations[table ?? ""]?[key],
+            language == locale.language.languageCode?.identifier
+        {
             switch translationEntry {
             case .simple(let string):
                 // If we have arguments, try to format the string
