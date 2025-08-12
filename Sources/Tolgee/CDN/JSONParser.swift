@@ -45,7 +45,7 @@ extension TranslationEntry: Decodable {
 }
 struct JSONParser {
 
-    static func loadTranslations(from jsonData: Data, ) throws -> [String:
+    static func loadTranslations(from jsonData: Data) throws -> [String:
         TranslationEntry]
     {
         let decoder = JSONDecoder()
