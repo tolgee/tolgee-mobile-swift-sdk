@@ -42,36 +42,52 @@ struct TolgeeTestsCs {
     }
     """
 
+  let czechLocale = Locale(identifier: "cs_CZ")
+
   @Test func testLoadCzechTranslationsFromJSON() throws {
 
     let context = TestContext()
     let tolgee = context.tolgee
+    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
 
     try tolgee.loadTranslations(from: testTranslationsJSON)
 
-    // Test basic Czech translation without arguments
-    let greeting = tolgee.translate("Hello, world!")
-    #expect(greeting == "Ahoj, světe!")
+    if #available(macOS 15.4, *) {
+
+      // Test basic Czech translation without arguments
+      let greeting = tolgee.translate("Hello, world!", locale: czechLocale)
+      #expect(greeting == "Ahoj, světe!")
+
+    } else {
+      #expect(Bool(false))  // Skip this test on older versions
+    }
   }
 
   @Test func testCzechSimplePlaceholderReplacement() throws {
     let context = TestContext()
     let tolgee = context.tolgee
+    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
     try tolgee.loadTranslations(from: testTranslationsJSON)
 
-    // Test Czech name replacement
-    let nameTranslation = tolgee.translate("My name is %@", "Jan")
-    #expect(nameTranslation == "Jmenuji se Jan")
+    if #available(macOS 15.4, *) {
 
-    let anotherName = tolgee.translate("My name is %@", "Marie")
-    #expect(anotherName == "Jmenuji se Marie")
+      // Test Czech name replacement
+      let nameTranslation = tolgee.translate("My name is %@", "Jan", locale: czechLocale)
+      #expect(nameTranslation == "Jmenuji se Jan")
+
+      let anotherName = tolgee.translate("My name is %@", "Marie", locale: czechLocale)
+      #expect(anotherName == "Jmenuji se Marie")
+
+    } else {
+      #expect(Bool(false))  // Skip this test on older versions
+    }
   }
 
   @Test func testCzechPluralFormsWithHashReplacement() throws {
     let context = TestContext()
     let tolgee = context.tolgee
+    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
     try tolgee.loadTranslations(from: testTranslationsJSON)
-    let czechLocale = Locale(identifier: "cs_CZ")
 
     if #available(macOS 15.4, *) {
 
@@ -99,6 +115,7 @@ struct TolgeeTestsCs {
   @Test func testCzechMissingTranslationFallback() throws {
     let context = TestContext()
     let tolgee = context.tolgee
+    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
     try tolgee.loadTranslations(from: testTranslationsJSON)
 
     // Test with a key that doesn't exist (should fallback to NSLocalizedString)

@@ -128,7 +128,7 @@ public final class Tolgee {
 
         logger.enableDebugLogs = enableDebugLogs
 
-        if language == nil {
+        if customLanguage == nil {
             // I think that we'll need to extend this logic to match it with localizations available on the CDN.
             guard let preferredLanguage = Locale.preferredLanguages.first else {
                 logger.error("Failed to determine preferred language")
