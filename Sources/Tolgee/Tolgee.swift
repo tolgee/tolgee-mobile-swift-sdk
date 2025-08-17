@@ -82,7 +82,7 @@ public final class Tolgee {
         }
     }
 
-    func onLogMessage() -> AsyncStream<LogMessage> {
+    public func onLogMessage() -> AsyncStream<LogMessage> {
         logger.onLogMessage()
     }
 

@@ -1,7 +1,59 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-
+    "My name is %@ and I have %lld apples" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "cs" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "[local] Jmenuji se %@ a mám %lld jablka"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "[local] Jmenuji se %@ a mám %lld jablek"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "[local] Jmenuji se %@ a mám %lld jablko"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "[local] Jmenuji se %@ a mám %lld jablek"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "[local] My name is %@ and I have %lld apple"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "[local] My name is %@ and I have %lld apples"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }

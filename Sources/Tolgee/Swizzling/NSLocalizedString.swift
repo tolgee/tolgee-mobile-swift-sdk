@@ -93,16 +93,17 @@
         _ key: String, tableName: String?, bundle: Bundle, value: String, comment: String
     ) -> String {
         // Only use Tolgee if it's initialized and available
-        if Tolgee.shared.isInitialized {
-            // Try to get translation from Tolgee first
-            let tolgeeTranslation = Tolgee.shared.translate(key, table: tableName, bundle: bundle)
+        //FIXME: make Tolgee.shared and .translate nonisolated
+        // if Tolgee.shared.isInitialized {
+        //     // Try to get translation from Tolgee first
+        //     let tolgeeTranslation = Tolgee.shared.translate(key, table: tableName, bundle: bundle)
 
-            // If Tolgee returns something different from the key, use it
-            // This handles the case where Tolgee falls back to NSLocalizedString
-            if tolgeeTranslation != key {
-                return tolgeeTranslation
-            }
-        }
+        //     // If Tolgee returns something different from the key, use it
+        //     // This handles the case where Tolgee falls back to NSLocalizedString
+        //     if tolgeeTranslation != key {
+        //         return tolgeeTranslation
+        //     }
+        // }
 
         // Fall back to original NSLocalizedString implementation
         if tableName != nil && bundle != Bundle.main {
@@ -137,7 +138,7 @@
     // MARK: - Automatic Initialization
 
     /// Automatically log swizzling status when the module loads
-    private class TolgeeSwizzlingInitializer {
+    private final class TolgeeSwizzlingInitializer: Sendable {
         static let shared = TolgeeSwizzlingInitializer()
 
         private init() {
@@ -150,6 +151,6 @@
     }
 
     // Trigger automatic initialization
-    private let _ = TolgeeSwizzlingInitializer.shared
+    private let x = TolgeeSwizzlingInitializer.shared
 
 #endif  // TOLGEE_SWIZZLE_NSLOCALIZEDSTRING
