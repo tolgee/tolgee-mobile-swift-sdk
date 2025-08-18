@@ -19,9 +19,7 @@ class ViewController: UIViewController {
         label.numberOfLines = 0
 
         let label2 = UILabel()
-        label2.text = String(
-            format: NSLocalizedString("My name is %@ and I have %lld apples", comment: ""), "John",
-            3)
+        label2.text = NSLocalizedString("Hello", comment: "")
         label2.textAlignment = .center
         label2.numberOfLines = 0
 

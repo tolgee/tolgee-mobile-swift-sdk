@@ -9,17 +9,13 @@ extension Bundle {
     static var swizzled: Method!
 
     @MainActor
+    static var originalImplementation: IMP!
+
+    @MainActor
     static var isSwizzled: Bool {
         return original != nil && swizzled != nil
     }
 
-    /// Swizzled implementation for localizedString(forKey:value:table:) method.
-    ///
-    /// - Parameters:
-    ///   - key: The key for a string in the table identified by tableName.
-    ///   - value: The value to return if key is nil or if a localized string for key can’t be found in the table.
-    ///   - tableName: The receiver’s string table to search. If tableName is nil or is an empty string, the method attempts to use the table in Localizable.strings.
-    /// - Returns: Localization value for localization key provided by crowdin. If there are no string for provided localization key, localization string from bundle will be returned.
     @objc func swizzled_LocalizedString(
         forKey key: String, value: String?, table tableName: String?
     ) -> String {
@@ -41,11 +37,14 @@ extension Bundle {
 
     @MainActor
     class func swizzle() {
-        // swiftlint:disable force_unwrapping
         original = class_getInstanceMethod(
             self, #selector(Bundle.localizedString(forKey:value:table:)))!
         swizzled = class_getInstanceMethod(
             self, #selector(Bundle.swizzled_LocalizedString(forKey:value:table:)))!
+
+        // Store the original implementation before swizzling
+        originalImplementation = method_getImplementation(original)
+
         method_exchangeImplementations(original, swizzled)
     }
 
@@ -55,5 +54,29 @@ extension Bundle {
         method_exchangeImplementations(swizzled, original)
         swizzled = nil
         original = nil
+        originalImplementation = nil
+    }
+
+    @MainActor
+    func originalLocalizedString(
+        forKey key: String, value: String? = nil, table tableName: String? = nil
+    ) -> String {
+        if Bundle.isSwizzled, let originalImp = Bundle.originalImplementation {
+            // Call the original implementation directly using the stored function pointer
+            typealias OriginalFunction = @convention(c) (
+                AnyObject, Selector, NSString, NSString?, NSString?
+            ) -> NSString
+            let originalFunc = unsafeBitCast(originalImp, to: OriginalFunction.self)
+            return originalFunc(
+                self,
+                #selector(Bundle.localizedString(forKey:value:table:)),
+                key as NSString,
+                value as NSString?,
+                tableName as NSString?
+            ).description
+        } else {
+            // If not swizzled, call the normal method
+            return localizedString(forKey: key, value: value, table: tableName)
+        }
     }
 }

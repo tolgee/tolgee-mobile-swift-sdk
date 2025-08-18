@@ -126,9 +126,10 @@ public final class Tolgee {
             return
         }
 
-        #if TOLGEE_ENABLE_SWIZZLING
-            swizzleBundleLocalizedString()
-        #endif
+        if ProcessInfo.processInfo.environment["TOLGEE_ENABLE_SWIZZLING"] == "true" {
+            print("Swizzling Bundle methods for improved localization handling")
+            Bundle.swizzle()
+        }
 
         logger.enableDebugLogs = enableDebugLogs
 
@@ -475,7 +476,8 @@ public final class Tolgee {
         }
 
         // Fallback to bundle.localizedString
-        let localizedString = bundle.localizedString(forKey: key, value: nil, table: table)
+        // !!! when swizzling is enabled, we use the original method to avoid infinite recursion
+        let localizedString = bundle.originalLocalizedString(forKey: key, value: nil, table: table)
 
         // If we have arguments, try to format the string
         if !arguments.isEmpty {

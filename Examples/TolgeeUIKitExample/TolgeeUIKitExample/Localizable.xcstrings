@@ -1,6 +1,22 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Hello" : {
+      "localizations" : {
+        "cs" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "[local] Ahoj"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[local] Hello"
+          }
+        }
+      }
+    },
     "My name is %@ and I have %lld apples" : {
       "extractionState" : "manual",
       "localizations" : {
