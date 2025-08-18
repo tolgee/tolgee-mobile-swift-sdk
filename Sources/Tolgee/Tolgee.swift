@@ -126,6 +126,10 @@ public final class Tolgee {
             return
         }
 
+        #if TOLGEE_ENABLE_SWIZZLING
+            swizzleBundleLocalizedString()
+        #endif
+
         logger.enableDebugLogs = enableDebugLogs
 
         if customLanguage == nil {
