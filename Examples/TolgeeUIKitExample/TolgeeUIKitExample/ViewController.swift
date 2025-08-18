@@ -19,11 +19,12 @@ class ViewController: UIViewController {
         label.numberOfLines = 0
 
         let label2 = UILabel()
+        // You need to set TOLGEE_ENABLE_SWIZZLING=true in env variables to opt in for swizzling of NSLocalizedString
         label2.text = NSLocalizedString("Hello", comment: "")
         label2.textAlignment = .center
         label2.numberOfLines = 0
 
-        // Create a vertical stack view
+        // This is just a boilerplate layout code
         let stackView = UIStackView(arrangedSubviews: [label, label2])
         stackView.axis = .vertical
         stackView.alignment = .center
