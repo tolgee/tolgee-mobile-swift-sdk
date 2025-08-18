@@ -126,12 +126,12 @@ public final class Tolgee {
             return
         }
 
+        logger.enableDebugLogs = enableDebugLogs
+
         if ProcessInfo.processInfo.environment["TOLGEE_ENABLE_SWIZZLING"] == "true" {
-            print("Swizzling Bundle methods for improved localization handling")
+            logger.debug("Swizzling Bundle methods (TOLGEE_ENABLE_SWIZZLING is set to true)")
             Bundle.swizzle()
         }
-
-        logger.enableDebugLogs = enableDebugLogs
 
         if customLanguage == nil {
             // I think that we'll need to extend this logic to match it with localizations available on the CDN.
