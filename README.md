@@ -1,11 +1,11 @@
 # Tolgee Mobile Swift SDK (Alpha) 🐁
 
 [![Tolgee](https://img.shields.io/badge/Tolgee-f06695)](https://tolgee.io/)
-![Android](https://img.shields.io/badge/Android-Supported-green?logo=android)
-![language](https://img.shields.io/github/languages/top/tolgee/tolgee-mobile-kotlin-sdk)
-[![github release](https://img.shields.io/github/v/release/tolgee/tolgee-mobile-kotlin-sdk?label=GitHub%20Release)](https://github.com/tolgee/tolgee-mobile-kotlin-sdk/releases/latest)
-[![licence](https://img.shields.io/badge/license-Apache%202%20-blue)](https://github.com/tolgee/tolgee-mobile-kotlin-sdk/blob/master/LICENSE)
-[![github stars](https://img.shields.io/github/stars/tolgee/tolgee-mobile-kotlin-sdk?style=social&label=Tolgee%20Mobile%20Kotlin%20SDK)](https://github.com/tolgee/tolgee-mobile-kotlin-sdk)
+![Android](https://img.shields.io/badge/iOS-Supported-green?logo=ios)
+![language](https://img.shields.io/github/languages/top/tolgee/tolgee-mobile-swift-sdk)
+[![github release](https://img.shields.io/github/v/release/tolgee/tolgee-mobile-swift-sdk?label=GitHub%20Release)](https://github.com/tolgee/tolgee-mobile-swift-sdk/releases/latest)
+![Licence](https://img.shields.io/github/license/tolgee/tolgee-mobile-swift-sdk)
+[![github stars](https://img.shields.io/github/stars/tolgee/tolgee-mobile-swift-sdk?style=social&label=Tolgee%20Mobile%20Swift%20SDK)](https://github.com/tolgee/tolgee-mobile-swift-sdk)
 [![github stars](https://img.shields.io/github/stars/tolgee/tolgee-platform?style=social&label=Tolgee%20Platform)](https://github.com/tolgee/tolgee-platform)
 [![Github discussions](https://img.shields.io/github/discussions/tolgee/tolgee-platform)](https://github.com/tolgee/tolgee-platform/discussions)
 [![Dev.to](https://img.shields.io/badge/Dev.to-tolgee_i18n?logo=devdotto&logoColor=white)](https://dev.to/tolgee_i18n)
@@ -18,13 +18,19 @@
 ## What is Tolgee?
 
 [Tolgee](https://tolgee.io/) is a powerful localization platform that simplifies the translation process for your applications.
-This SDK provides integration for Kotlin-based projects, with a primary focus on Android.
+This SDK provides integration for iOS and macOS projects.
 
-Currently, Android is fully supported, but any Kotlin-based codebase can in theory use this library.
+## ✨ Features
 
-## Features
-
-- **Over-the-air updates**: Update your translations without releasing a new app version
+- 🌍 **Remote translation loading** from Tolgee CDN with automatic updates
+- 📦 **Namespace-based organization** for scalable translation management  
+- 💾 **Intelligent caching** with ETag support and background synchronization
+- 🔄 **Automatic fallback** to bundle-based localizations when offline
+- 🎯 **Smart language detection** from device settings with manual override
+- ⚡ **Modern async/await API** for Swift concurrency
+- 🔧 **SwiftUI integration** with reactive updates and `TolgeeText` component
+- 📱 **Multi-platform support** for iOS, macOS, tvOS, and watchOS
+- 🔍 **Advanced debugging** with comprehensive logging 
 
 
 ## Installation
@@ -56,36 +62,21 @@ let greeting = Tolgee.shared.translate("hello_world")
 let personalGreeting = Tolgee.shared.translate("hello_name", "Alice")
 ```
 
-## ✨ Features
-
-- 🌍 **Remote translation loading** from Tolgee CDN with automatic updates
-- 📦 **Namespace-based organization** for scalable translation management  
-- 💾 **Intelligent caching** with ETag support and background synchronization
-- 🔄 **Automatic fallback** to bundle-based localizations when offline
-- 🎯 **Smart language detection** from device settings with manual override
-- ⚡ **Modern async/await API** for Swift concurrency
-- 🧪 **ICU plural forms** support for complex pluralization rules
-- 🔧 **SwiftUI integration** with reactive updates and `TolgeeText` component
-- 📱 **Multi-platform support** for iOS, macOS, tvOS, and watchOS
-- 🏗️ **Type-safe** and performant with strict concurrency
-- 🔍 **Advanced debugging** with comprehensive logging
-- 🎨 **String interpolation** with format specifiers and multiple arguments
-
 ## 📦 Installation
 
-### Swift Package Manager (Recommended)
+### Swift Package Manager
 
 Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/petrpavlik/tolgee-ios", from: "1.0.0")
+    .package(url: "https://github.com/tolgee/tolgee-mobile-swift-sdk", from: "1.0.0")
 ]
 ```
 
 Or through Xcode:
 1. File → Add Package Dependencies...
-2. Enter: `https://github.com/petrpavlik/tolgee-ios`
+2. Enter: `https://github.com/tolgee/tolgee-mobile-swift-sdk`
 3. Choose version and add to your target
 
 ## 🎯 Basic Usage
@@ -95,22 +86,12 @@ Or through Xcode:
 ```swift
 import Tolgee
 
-class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        
-        // Basic initialization with automatic language detection
-        let cdnURL = URL(string: "https://cdn.tolgee.io/your-project-id")!
-        Tolgee.shared.initialize(cdn: cdnURL)
-        
-        // Optional: Fetch translations immediately
-        Task {
-            await Tolgee.shared.remoteFetch()
-        }
-        
-        return true
-    }
-}
+// Set the CDN format to Apple in your Tolgee project
+let cdnURL = URL(string: "https://cdn.tolgee.io/your-project-id")!
+Tolgee.shared.initialize(cdn: cdnURL)
 ```
+
+Refer to our SwiftUI and UIKit examples for a complete setup.
 
 ### Advanced Initialization
 
@@ -124,6 +105,12 @@ Tolgee.shared.initialize(
 )
 ```
 
+### Fetch Remote Translations
+You have to explicitly call the `fetch` method to fetch translations from the CDN.
+```swift
+await Tolgee.shared.remoteFetch()
+```
+
 ### Basic Translation
 
 ```swift
@@ -133,25 +120,15 @@ let title = Tolgee.shared.translate("app_title")
 // Translation with arguments
 let welcomeMessage = Tolgee.shared.translate("welcome_user", "John")
 let itemCount = Tolgee.shared.translate("items_count", 5)
-
-// Translation from specific namespace/table
-let saveButton = Tolgee.shared.translate("save", table: "buttons")
+let nameAndAge = Tolgee.shared.translate("My name is %@ and I'm %lld years old", "John", 30)
 ```
 
-### Plural Forms & ICU Support
+> [!NOTE]
+> Strings with multiple pluralized parameters are currently **not supported**, for example `Tolgee.shared.translate("I have %lld apples and %lld oranges", 2, 3)`
 
-```swift
-// Automatic plural form selection based on count
-let appleCount1 = Tolgee.shared.translate("apple_count", 1)    // "You have 1 apple"
-let appleCount5 = Tolgee.shared.translate("apple_count", 5)    // "You have 5 apples"
+### 🔧 SwiftUI Integration
 
-// Complex pluralization for different languages
-let czechPlural = Tolgee.shared.translate("items_count", 2.5)  // Handles Czech plural rules
-```
-
-## 🔧 SwiftUI Integration
-
-### TolgeeText Component
+Tolgee is designed to work great with SwiftUI and SwiftUI previews.
 
 ```swift
 import SwiftUI
@@ -165,17 +142,12 @@ struct ContentView: View {
         VStack {
             // Simple text translation
             TolgeeText("welcome_title")
-                .font(.largeTitle)
             
             // Text with arguments
             TolgeeText("hello_user", userName)
-                .foregroundColor(.blue)
             
             // Text with pluralization
             TolgeeText("item_count", itemCount)
-            
-            // Text from specific table/namespace
-            TolgeeText("save", tableName: "buttons")
         }
     }
 }
@@ -183,29 +155,43 @@ struct ContentView: View {
 
 ### Reactive Updates
 
+Tolgee provides a hook to allow the consumer of the SDK to be notified about when the translation cache has been updated.
+
 ```swift
-struct TranslationView: View {
-    @State private var translationText = ""
-    
-    var body: some View {
-        Text(translationText)
-            .task {
-                // Listen for translation updates
-                for await _ in Tolgee.shared.onTranslationsUpdated() {
-                    translationText = Tolgee.shared.translate("dynamic_content")
-                }
-            }
-            .onAppear {
-                // Initial translation
-                translationText = Tolgee.shared.translate("dynamic_content")
-            }
+Task {
+    for await _ in Tolgee.shared.onTranslationsUpdated() {
+        // update your UI
     }
 }
 ```
 
+When using SwiftUI, Tolgee offers a convenience utility that automatically triggers a redraw of a view when the translations cache has been updated.
+
+```swift
+struct ContentView: View {
+    
+    // This will automatically re-render the view when
+    // the localization cache is updated from a CDN.
+    @StateObject private var updater = TolgeeSwiftUIUpdater()
+    
+    var body: some View {
+        VStack {
+            TolgeeText("My name is %@ and I have %lld apples", "John", 3)
+        }
+    }
+}
+```
+
+### Swizzling of Apple's APIs
+Tolgee optionally supports swizzling of `Bundle.localizedString`, which is being used by `NSLocalizedString` function. In order to enable swizzling, set enviromental variable `TOLGEE_ENABLE_SWIZZLING=true` in your scheme settings. Refer to our UIKit example.
+
+
 ## 🌐 Advanced Features
 
-### Namespace Management
+### Custom Tables/Namespaces
+Tolgee iOS SDK supports loading of local translations from multiple local tables by providing the `table` parameter. When using `.xcstrings` files, the names of the tables match the names of your files without the extension. You do not need to provide the table name when loading strings stored in the default `Localizable.xcstrings` file.
+
+To have the OTA updates working properly, make sure that you have enabled namespaces for your Tolgee project and that you have created namespaces matching the names of your local tables.
 
 ```swift
 // Initialize with multiple namespaces for better organization
@@ -216,53 +202,33 @@ Tolgee.shared.initialize(
 
 // Use translations from specific namespaces
 let commonGreeting = Tolgee.shared.translate("hello", table: "common")
-let authError = Tolgee.shared.translate("invalid_credentials", table: "auth")
-let profileTitle = Tolgee.shared.translate("edit_profile", table: "profile")
+// or for SwiftUI
+TolgeeText("hello", table: "common")
 ```
 
-### Background Updates
+### Custom Bundles
+
+You may have your strings resources stored in a dedicated XCFramework or a Swift Package.
 
 ```swift
-class TranslationManager {
-    func setupPeriodicUpdates() {
-        Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { _ in
-            Task {
-                await Tolgee.shared.remoteFetch()
-                print("Translations updated at \(Date())")
-            }
-        }
-    }
+let bundle: Bundle = ... // access the bundle
+
+// Use the SDK directly
+let commonGreeting = Tolgee.shared.translate("hello", bundle: bundle)
+// or for SwiftUI
+TolgeeText("hello", bundle: bundle)
+```
+
+### Log Forwarding
+Tolgee allows forwarding of logs that are printed to the console by default.
+You can use this feature to forward errors and other logs into your analytics.
+
+```swift
+for await logMessage in Tolgee.shared.onLogMessage() {
+    // Here you can forward logs from Tolgee SDK to your analytics SDK.
 }
 ```
 
-### Translation Status Monitoring
-
-```swift
-// Check initialization status
-if Tolgee.shared.isInitialized {
-    print("Tolgee is ready to use")
-}
-
-// Check last fetch timestamp
-if let lastFetch = Tolgee.shared.lastFetchDate {
-    print("Last update: \(lastFetch)")
-} else {
-    print("No remote fetch performed yet")
-}
-```
-
-### Offline-First with Fallbacks
-
-```swift
-// Tolgee automatically falls back to bundle-based localizations
-// when remote translations are unavailable
-
-// 1. First tries remote translations from CDN
-// 2. Falls back to cached translations
-// 3. Finally falls back to bundle-based Localizable.strings
-
-let text = Tolgee.shared.translate("offline_message") // Always works
-```
 
 ## 📱 Platform Support
 
@@ -276,15 +242,24 @@ let text = Tolgee.shared.translate("offline_message") // Always works
 ## ⚙️ Requirements
 
 - **Swift:** 6.0+
-- **Xcode:** 15.0+
+- **Xcode:** 16.3+
+
+## 🧵 Thread-safety
+
+Tolgee SDK is designed to be used synchronously on the main actor (except the `fetch` method). Access to the SDK from other actors generally has to be awaited.
+
+```swift
+Task.deattached {
+    // notice that the call has to be awaited outside of the main actor
+    let str = await Tolgee.shared.translate("key")
+}
+```
 
 ## 🤝 Why Choose Tolgee?
 
 **Tolgee saves a lot of time** you would spend on localization tasks otherwise. It enables you to provide **perfectly translated software**.
 
 ### All-in-one localization solution for your iOS application 🙌
-### Out-of-box in-context localization 🎉  
-### Automated screenshot generation 📷
 ### Translation management platform 🎈
 ### Open-source 🔥
 
@@ -293,20 +268,19 @@ let text = Tolgee.shared.translate("offline_message") // Always works
 ## 📚 Examples & Demos
 
 Check out our example projects:
-- [Basic iOS App](examples/basic-ios)
-- [SwiftUI Integration](examples/swiftui-demo)
-- [Multi-platform App](examples/multiplatform)
+- [SwiftUI Integration](Examples/TolgeeSwiftUIExample)
+- [UIKit Integration](Examples/TolgeeUIKitExample)
 
 ## 🆘 Need Help?
 
 - 📖 [Documentation](https://docs.tolgee.io)
-- 💬 [Community Discord](https://discord.gg/tolgee)
+- 💬 [Community Slack](https://tolg.ee/slack)
 - 🐛 [Report Issues](https://github.com/petrpavlik/tolgee-ios/issues)
 - 💡 [Feature Requests](https://github.com/petrpavlik/tolgee-ios/discussions)
 
 ## 🏗️ Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+Contributions are welcome!
 
 ## 📄 License
 
