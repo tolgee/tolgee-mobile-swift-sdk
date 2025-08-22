@@ -128,28 +128,53 @@ let nameAndAge = Tolgee.shared.translate("My name is %@ and I'm %lld years old",
 
 ### 🔧 SwiftUI Integration
 
-Tolgee is designed to work great with SwiftUI and SwiftUI previews.
+Tolgee works great with SwiftUI, including previewing views in different localizations using SwiftUI previews.
 
+You can use the `TolgeeText` component which will automatically use the injected locale on iOS 18.4+
 ```swift
 import SwiftUI
 import Tolgee
 
 struct ContentView: View {
-    @State private var userName = "Alice"
-    @State private var itemCount = 5
+    var body: some View {
+        TolgeeText("welcome_title")
+    }
+}
+
+#Preview("English") {
+    ContentView()
+        .environment(\.locale, Locale(identifier: "en"))
+}
+
+#Preview("Czech") {
+    ContentView()
+        .environment(\.locale, Locale(identifier: "cs"))
+}
+```
+
+or use a version of the `translate` method that accepts `locale` param on iOS 18.4 and newer. The older implementation will fall back to the system language.
+
+```swift
+struct ContentView: View {
+    @Environment(\.locale) var locale
     
     var body: some View {
-        VStack {
-            // Simple text translation
-            TolgeeText("welcome_title")
-            
-            // Text with arguments
-            TolgeeText("hello_user", userName)
-            
-            // Text with pluralization
-            TolgeeText("item_count", itemCount)
+        if #available(iOS 18.4, *) {
+            Text(Tolgee.shared.translate("welcome_title", locale: locale))
+        } else {
+            Text(Tolgee.shared.translate("welcome_title"))
         }
     }
+}
+
+#Preview("English") {
+    ContentView()
+        .environment(\.locale, Locale(identifier: "en"))
+}
+
+#Preview("Czech") {
+    ContentView()
+        .environment(\.locale, Locale(identifier: "cs"))
 }
 ```
 
@@ -183,8 +208,16 @@ struct ContentView: View {
 ```
 
 ### Swizzling of Apple's APIs
-Tolgee optionally supports swizzling of `Bundle.localizedString`, which is being used by `NSLocalizedString` function. In order to enable swizzling, set enviromental variable `TOLGEE_ENABLE_SWIZZLING=true` in your scheme settings. Refer to our UIKit example.
+Tolgee optionally supports swizzling of `Bundle.localizedString`, which is being used by `NSLocalizedString` function. In order to enable swizzling, set enviromental variable `TOLGEE_ENABLE_SWIZZLING=true` in your scheme settings. Refer to our UIKit example to see it in action.
 
+Following calls will then be backed by the Tolgee SDK:
+```swift
+Bundle.main.localizedString(forKey: "welcome_message")
+NSLocalizedString("welcome_message", comment: "")
+```
+
+> [!NOTE]
+> Plural strings are currently not supported and will fall back to using the string bundled with the app.
 
 ## 🌐 Advanced Features
 
