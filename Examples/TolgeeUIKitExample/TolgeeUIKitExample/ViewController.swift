@@ -20,7 +20,9 @@ class ViewController: UIViewController {
 
         let label2 = UILabel()
         // You need to set TOLGEE_ENABLE_SWIZZLING=true in env variables to opt in for swizzling of NSLocalizedString
-        label2.text = NSLocalizedString("Hello", comment: "")
+        // Please note that pluralized strings are currently not supported and the logic will fall back to the data bundled with the app.
+        // Regular parameters are supported, such as the example bellow.
+        label2.text = String(format: NSLocalizedString("My name is %@", comment: ""), "John")
         label2.textAlignment = .center
         label2.numberOfLines = 0
 

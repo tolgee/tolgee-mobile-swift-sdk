@@ -2,6 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "Hello" : {
+      "extractionState" : "stale",
       "localizations" : {
         "cs" : {
           "stringUnit" : {
@@ -13,6 +14,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "[local] Hello"
+          }
+        }
+      }
+    },
+    "My name is %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[local] Jmenuji se %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[local] My name is %@"
           }
         }
       }
