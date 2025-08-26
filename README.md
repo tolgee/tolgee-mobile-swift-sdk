@@ -1,4 +1,4 @@
-# Tolgee Mobile Swift SDK (Alpha) 🐁
+# Tolgee Mobile Swift SDK 🐁
 
 [![Tolgee](https://img.shields.io/badge/Tolgee-f06695)](https://tolgee.io/)
 ![Android](https://img.shields.io/badge/iOS-Supported-green?logo=ios)
