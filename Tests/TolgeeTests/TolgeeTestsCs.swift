@@ -44,13 +44,16 @@ struct TolgeeTestsCs {
 
   let czechLocale = Locale(identifier: "cs_CZ")
 
-  @Test func testLoadCzechTranslationsFromJSON() throws {
+  @Test func testLoadCzechTranslationsFromJSON() async throws {
 
     let context = TestContext()
     let tolgee = context.tolgee
     tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
 
-    try tolgee.loadTranslations(from: testTranslationsJSON)
+    await context.urlSession.setMockResponse(
+      for: URL(string: "https://cdn.example.com/cs.json")!,
+      result: .success(Data(testTranslationsJSON.utf8)))
+    await tolgee.remoteFetch()
 
     if #available(macOS 15.4, *) {
 
@@ -63,11 +66,15 @@ struct TolgeeTestsCs {
     }
   }
 
-  @Test func testCzechSimplePlaceholderReplacement() throws {
+  @Test func testCzechSimplePlaceholderReplacement() async throws {
     let context = TestContext()
     let tolgee = context.tolgee
     tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
-    try tolgee.loadTranslations(from: testTranslationsJSON)
+
+    await context.urlSession.setMockResponse(
+      for: URL(string: "https://cdn.example.com/cs.json")!,
+      result: .success(Data(testTranslationsJSON.utf8)))
+    await tolgee.remoteFetch()
 
     if #available(macOS 15.4, *) {
 
@@ -83,11 +90,15 @@ struct TolgeeTestsCs {
     }
   }
 
-  @Test func testCzechPluralFormsWithHashReplacement() throws {
+  @Test func testCzechPluralFormsWithHashReplacement() async throws {
     let context = TestContext()
     let tolgee = context.tolgee
     tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
-    try tolgee.loadTranslations(from: testTranslationsJSON)
+
+    await context.urlSession.setMockResponse(
+      for: URL(string: "https://cdn.example.com/cs.json")!,
+      result: .success(Data(testTranslationsJSON.utf8)))
+    await tolgee.remoteFetch()
 
     if #available(macOS 15.4, *) {
 
@@ -112,11 +123,15 @@ struct TolgeeTestsCs {
     }
   }
 
-  @Test func testCzechMissingTranslationFallback() throws {
+  @Test func testCzechMissingTranslationFallback() async throws {
     let context = TestContext()
     let tolgee = context.tolgee
     tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
-    try tolgee.loadTranslations(from: testTranslationsJSON)
+
+    await context.urlSession.setMockResponse(
+      for: URL(string: "https://cdn.example.com/cs.json")!,
+      result: .success(Data(testTranslationsJSON.utf8)))
+    await tolgee.remoteFetch()
 
     // Test with a key that doesn't exist (should fallback to NSLocalizedString)
     let missingKey = tolgee.translate("nonexistent.key")

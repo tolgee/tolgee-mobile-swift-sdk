@@ -382,21 +382,6 @@ public final class Tolgee {
         }
     }
 
-    func loadTranslations(from jsonString: String, table: String = "") throws {
-
-        guard let data = jsonString.data(using: .utf8) else {
-            throw TolgeeError.invalidJSONString
-        }
-
-        let translations = try JSONParser.loadTranslations(from: data)
-        self.translations[table] = translations
-    }
-
-    func loadTranslations(from jsonData: Data, table: String = "") throws {
-        let translations = try JSONParser.loadTranslations(from: jsonData)
-        self.translations[table] = translations
-    }
-
     /// Translates a given key to a localized string with optional format arguments.
     ///
     /// This method first attempts to find the translation in the loaded Tolgee translations,

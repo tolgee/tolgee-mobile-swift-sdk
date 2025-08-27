@@ -37,7 +37,7 @@ struct FetchCdnServiceTests {
 
         // Set up mock responses
         let baseURL = cdnURL.appending(component: "cs.json")
-        let namespaceURL = cdnURL.appending(component: "Localizable2/cs.json")
+        let namespaceURL = cdnURL.appending(path: "Localizable2/cs.json")
         try await mockSession.setMockJSONResponse(
             for: baseURL, json: ["Hello, world!": "Ahoj, světe!"])
         try await mockSession.setMockJSONResponse(
