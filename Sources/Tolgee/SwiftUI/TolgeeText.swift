@@ -15,6 +15,7 @@ public struct TolgeeText: View {
     private let arguments: [CVarArg]
     private let bundle: Bundle
     @Environment(\.locale) private var locale
+    @StateObject private var updater = TolgeeSwiftUIUpdater()
 
     public init(
         _ key: String, _ arguments: CVarArg..., tableName: String? = nil, bundle: Bundle = .main

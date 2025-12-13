@@ -17,7 +17,21 @@ struct ContentView: View {
     @Environment(\.locale) var locale
     
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
+            
+            HStack {
+                TolgeeText("Language switcher:")
+                LanguagePicker(onLanguageChange: { language in
+                    if let language {
+                        Tolgee.shared.setCustomLocale(Locale(identifier: language))
+                    } else {
+                        Tolgee.shared.setCustomLocale(.current)
+                    }
+                })
+                .pickerStyle(.menu)
+            }
+            
+            Divider()
             
             // Use TolgeeText instead of Text for convenience
             TolgeeText("My name is %@ and I have %lld apples", "John", 3)

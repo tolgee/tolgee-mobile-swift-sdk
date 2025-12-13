@@ -43,11 +43,22 @@ public final class Tolgee {
 
     private var language: String?
     private var namespaces: Set<String> = []
+    private var customLocale: Locale? = nil
+
+    public var locale: Locale {
+        if let customLocale {
+            return customLocale
+        } else {
+            return Locale.current
+        }
+    }
 
     private let logger = TolgeeLog()
 
     private let fetchCdnService: FetchCdnService
     private let cache: CacheProtocol
+    // TODO: Make bundle repository mockable for testing
+    private let bundleRepository = BundleRepository()
 
     /// Indicates whether the Tolgee SDK has been initialized.
     ///
@@ -107,7 +118,8 @@ public final class Tolgee {
     ///
     /// - Parameters:
     ///   - cdn: The base URL of the Tolgee CDN where translation files are hosted (optional)
-    ///   - language: The target language code (e.g., "en", "es", "cs"). If `nil`, automatically detects from device settings (optional)
+    ///   - locale: Optional custom locale to use for translations and formatting.
+    ///   - language: The target language code on the Tolgee CDN (e.g., "en", "es", "cs"). Use this to override the locale's language when it differs from the CDN language code.
     ///   - namespaces: A set of namespace identifiers for organizing translations into logical groups (defaults to empty set)
     ///
     /// ## Usage
@@ -117,7 +129,8 @@ public final class Tolgee {
     /// try await Tolgee.shared.remoteFetch()
     /// ```
     public func initialize(
-        cdn: URL, language customLanguage: String? = nil, namespaces: Set<String> = [],
+        cdn: URL, locale customLocale: Locale = .current, language customLanguage: String? = nil,
+        namespaces: Set<String> = [],
         enableDebugLogs: Bool = false
     ) {
 
@@ -163,86 +176,11 @@ public final class Tolgee {
         cdnURL = cdn
         self.namespaces = namespaces
 
-        // Track whether we found any cached data for this app version
-        var foundAnyCache = false
-
-        if let etag = cache.loadCdnEtag(for: .init(language: language, cdn: cdn.absoluteString)) {
-            foundAnyCache = true
-            cdnEtags[""] = etag
-            logger.debug(
-                "Loaded CDN ETag for language: \(language) and base namespace - ETag: \(etag)")
-        } else {
-            logger.debug("No CDN ETag found for language: \(language) and base namespace")
+        if customLocale != .current {
+            self.customLocale = customLocale
         }
 
-        if let data = cache.loadRecords(
-            for: CacheDescriptor(
-                language: language, appVersionSignature: appVersionSignature,
-                cdn: cdn.absoluteString))
-        {
-            foundAnyCache = true
-            do {
-                // Load cached translations
-                let translations = try JSONParser.loadTranslations(from: data)
-                self.translations[""] = translations
-                logger.debug(
-                    "Loaded cached translations for language: \(language) and base namespace"
-                )
-            } catch {
-                logger.error("Failed to load cached translations: \(error)")
-            }
-        } else {
-            logger.debug("No cached translations found for language: \(language)")
-        }
-
-        for namespace in namespaces {
-
-            if let etag = cache.loadCdnEtag(
-                for: .init(language: language, namespace: namespace, cdn: cdn.absoluteString))
-            {
-                foundAnyCache = true
-                cdnEtags[namespace] = etag
-                logger.debug(
-                    "Loaded CDN ETag for language: \(language), namespace: \(namespace) - ETag: \(etag)"
-                )
-            } else {
-                logger.debug("No CDN ETag found for language: \(language), namespace: \(namespace)")
-            }
-
-            if let data = cache.loadRecords(
-                for: CacheDescriptor(
-                    language: language, namespace: namespace,
-                    appVersionSignature: appVersionSignature, cdn: cdn.absoluteString))
-            {
-                foundAnyCache = true
-                do {
-                    // Load cached translations for each namespace
-                    let translations = try JSONParser.loadTranslations(from: data)
-                    self.translations[namespace] = translations
-                    logger.debug(
-                        "Loaded cached translations for language: \(language), namespace: \(namespace)"
-                    )
-                } catch {
-                    logger.error(
-                        "Failed to load cached translations for namespace '\(namespace)': \(error)")
-                }
-            } else {
-                logger.debug(
-                    "No cached translations found for language: \(language), namespace: \(namespace)"
-                )
-            }
-        }
-
-        // If no cache was found for the current app version, clear all cache
-        // This ensures we wipe cache files from old app versions
-        if !foundAnyCache {
-            do {
-                try clearCaches()
-                logger.debug("Cleared all cache since no cache found for current app version")
-            } catch {
-                logger.error("Failed to clear cache: \(error)")
-            }
-        }
+        loadMemoryCache()
 
         isInitialized = true
         logger.debug("Tolgee initialized with language: \(language), namespaces: \(namespaces)")
@@ -414,8 +352,6 @@ public final class Tolgee {
     )
         -> String
     {
-        let locale = Locale.current
-
         // First try to get translation from loaded translations
         if let translationEntry = translations[table ?? ""]?[key],
             language == locale.language.languageCode?.identifier
@@ -461,6 +397,20 @@ public final class Tolgee {
         }
 
         // Fallback to bundle.localizedString
+
+        var bundle = bundle
+        if let customLocale {
+            if let replacementBundle = bundleRepository.bundle(
+                for: customLocale, referenceBundle: bundle)
+            {
+                bundle = replacementBundle
+            } else {
+                logger.error(
+                    "No localization bundle found for locale \(customLocale.identifier) in bundle \(bundle.bundlePath)"
+                )
+            }
+        }
+
         // !!! when swizzling is enabled, we use the original method to avoid infinite recursion
         let localizedString = bundle.originalLocalizedString(forKey: key, value: nil, table: table)
 
@@ -508,10 +458,13 @@ public final class Tolgee {
     @available(macOS 15.4, *)
     public func translate(
         _ key: String, _ arguments: CVarArg..., table: String? = nil, bundle: Bundle = .main,
-        locale: Locale = .current
+        locale providedLocale: Locale = .current
     )
         -> String
     {
+        // Having a custom locale set in Tolgee takes precedence
+        let locale = customLocale ?? providedLocale
+
         // First try to get translation from loaded translations
         if let translationEntry = translations[table ?? ""]?[key],
             language == locale.language.languageCode?.identifier
@@ -578,5 +531,162 @@ public final class Tolgee {
         cdnEtags.removeAll()
         try cache.clearAll()
         logger.debug("Successfully cleared all cached translations and ETag data")
+    }
+
+    /// Sets a custom locale for translations and formatting.
+    ///
+    /// This method allows you to override the system locale with a custom locale for
+    /// translations, plural rules, and string formatting.
+    ///
+    /// When the language changes,
+    /// you should call ``remoteFetch()`` to fetch translations for the new language.
+    ///
+    /// - Parameters:
+    ///   - locale: The locale to use for translations and formatting. Pass `Locale.current`
+    ///     to reset to the system locale.
+    ///   - language: Optional language code on the Tolgee CDN (e.g., "en", "es", "cs"). If `nil`, the language
+    ///     is extracted from the locale. Use this to override the locale's language when it differs from the CDN language code.
+    ///
+    /// - Note: The SDK must be initialized before calling this method. If the locale
+    ///   is already set to the requested value, no action is taken.
+    ///
+    /// - Important: When the language changes, call ``remoteFetch()`` to fetch
+    ///   translations for the new language from the CDN.
+    public func setCustomLocale(_ locale: Locale, language: String? = nil) {
+        guard isInitialized else {
+            logger.error("Tolgee must be initialized before setting a custom locale")
+            return
+        }
+
+        guard let newLanguage = language ?? locale.language.languageCode?.identifier else {
+            logger.error(
+                "Failed to determine language identifier from locale: \(locale.identifier)")
+            return
+        }
+
+        let needsLanguageChange = newLanguage != self.language
+        let didUpdateLocale = locale != self.customLocale
+
+        self.language = newLanguage
+
+        if locale == .current {
+            self.customLocale = nil
+        } else {
+            self.customLocale = locale
+        }
+
+        if needsLanguageChange {
+
+            translations.removeAll()
+            cdnEtags.removeAll()
+            loadMemoryCache()
+
+            onTranslationsUpdatedSubscribers.forEach {
+                $0.yield(())
+            }
+        } else if didUpdateLocale {
+            onTranslationsUpdatedSubscribers.forEach {
+                $0.yield(())
+            }
+        } else {
+            logger.debug("Custom locale is already set to \(locale.identifier), no changes made")
+            return
+        }
+
+        logger.debug("Set custom locale to \(locale.identifier)")
+    }
+
+    private func loadMemoryCache() {
+
+        guard let language else {
+            logger.error("Language must be specified to load memory cache")
+            return
+        }
+
+        guard let cdn = cdnURL else {
+            logger.error("CDN URL must be specified to load memory cache")
+            return
+        }
+
+        // Track whether we found any cached data for this app version
+        var foundAnyCache = false
+
+        if let etag = cache.loadCdnEtag(for: .init(language: language, cdn: cdn.absoluteString)) {
+            foundAnyCache = true
+            cdnEtags[""] = etag
+            logger.debug(
+                "Loaded CDN ETag for language: \(language) and base namespace - ETag: \(etag)")
+        } else {
+            logger.debug("No CDN ETag found for language: \(language) and base namespace")
+        }
+
+        if let data = cache.loadRecords(
+            for: CacheDescriptor(
+                language: language, appVersionSignature: appVersionSignature,
+                cdn: cdn.absoluteString))
+        {
+            foundAnyCache = true
+            do {
+                // Load cached translations
+                let translations = try JSONParser.loadTranslations(from: data)
+                self.translations[""] = translations
+                logger.debug(
+                    "Loaded cached translations for language: \(language) and base namespace"
+                )
+            } catch {
+                logger.error("Failed to load cached translations: \(error)")
+            }
+        } else {
+            logger.debug("No cached translations found for language: \(language)")
+        }
+
+        for namespace in namespaces {
+
+            if let etag = cache.loadCdnEtag(
+                for: .init(language: language, namespace: namespace, cdn: cdn.absoluteString))
+            {
+                foundAnyCache = true
+                cdnEtags[namespace] = etag
+                logger.debug(
+                    "Loaded CDN ETag for language: \(language), namespace: \(namespace) - ETag: \(etag)"
+                )
+            } else {
+                logger.debug("No CDN ETag found for language: \(language), namespace: \(namespace)")
+            }
+
+            if let data = cache.loadRecords(
+                for: CacheDescriptor(
+                    language: language, namespace: namespace,
+                    appVersionSignature: appVersionSignature, cdn: cdn.absoluteString))
+            {
+                foundAnyCache = true
+                do {
+                    // Load cached translations for each namespace
+                    let translations = try JSONParser.loadTranslations(from: data)
+                    self.translations[namespace] = translations
+                    logger.debug(
+                        "Loaded cached translations for language: \(language), namespace: \(namespace)"
+                    )
+                } catch {
+                    logger.error(
+                        "Failed to load cached translations for namespace '\(namespace)': \(error)")
+                }
+            } else {
+                logger.debug(
+                    "No cached translations found for language: \(language), namespace: \(namespace)"
+                )
+            }
+        }
+
+        // If no cache was found for the current app version, clear all cache
+        // This ensures we wipe cache files from old app versions
+        if !foundAnyCache {
+            do {
+                try clearCaches()
+                logger.debug("Cleared all cache since no cache found for current app version")
+            } catch {
+                logger.error("Failed to clear cache: \(error)")
+            }
+        }
     }
 }
