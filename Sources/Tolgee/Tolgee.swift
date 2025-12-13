@@ -129,7 +129,8 @@ public final class Tolgee {
     /// try await Tolgee.shared.remoteFetch()
     /// ```
     public func initialize(
-        cdn: URL, locale customLocale: Locale = .current, language customLanguage: String? = nil,
+        cdn: URL, locale customLocale: Locale = .current,
+        language customLanguage: String? = nil,
         namespaces: Set<String> = [],
         enableDebugLogs: Bool = false
     ) {
@@ -147,23 +148,36 @@ public final class Tolgee {
         }
 
         if customLanguage == nil {
-            // I think that we'll need to extend this logic to match it with localizations available on the CDN.
-            guard let preferredLanguage = Locale.preferredLanguages.first else {
-                logger.error("Failed to determine preferred language")
-                return
-            }
+            if customLocale != .current {
+                // If a custom locale is provided, use its language
+                if let languageCode = customLocale.language.languageCode?.identifier {
+                    self.language = languageCode
+                    logger.debug("Using language from custom locale: \(languageCode)")
+                } else {
+                    logger.error(
+                        "Failed to determine language identifier from custom locale \(customLocale.identifier)"
+                    )
+                    return
+                }
+            } else {
+                // I think that we'll need to extend this logic to match it with localizations available on the CDN.
+                guard let preferredLanguage = Locale.preferredLanguages.first else {
+                    logger.error("Failed to determine preferred language")
+                    return
+                }
 
-            guard
-                let languageIdentifier = Locale(identifier: preferredLanguage).language
-                    .languageCode?.identifier
-            else {
-                logger.error(
-                    "Failed to determine language identifier from preferred language \(preferredLanguage)"
-                )
-                return
+                guard
+                    let languageIdentifier = Locale(identifier: preferredLanguage).language
+                        .languageCode?.identifier
+                else {
+                    logger.error(
+                        "Failed to determine language identifier from preferred language \(preferredLanguage)"
+                    )
+                    return
+                }
+                self.language = languageIdentifier
+                logger.debug("Automatically detected preferred language: \(languageIdentifier)")
             }
-            self.language = languageIdentifier
-            logger.debug("Automatically detected preferred language: \(languageIdentifier)")
         } else {
             self.language = customLanguage
         }
@@ -212,10 +226,21 @@ public final class Tolgee {
             files.append(.init(path: "\(namespace)/\(language).json", etag: cdnEtags[namespace]))  // Namespace files
         }
 
+        let languageBeingFetched = language
+
         do {
             let translationData = try await fetchCdnService.fetchFiles(
                 from: cdnURL,
                 files: files)
+
+            guard self.language == languageBeingFetched else {
+                logger.debug(
+                    "Language changed during fetch from \(languageBeingFetched) to \(language). Discarding fetched data."
+                )
+                return
+            }
+
+            try await Task.checkCancellation()
 
             // Process the fetched translation data
             for (filePath, result) in translationData {
@@ -353,9 +378,7 @@ public final class Tolgee {
         -> String
     {
         // First try to get translation from loaded translations
-        if let translationEntry = translations[table ?? ""]?[key],
-            language == locale.language.languageCode?.identifier
-        {
+        if let translationEntry = translations[table ?? ""]?[key] {
             switch translationEntry {
             case .simple(let string):
                 // If we have arguments, try to format the string
@@ -465,9 +488,18 @@ public final class Tolgee {
         // Having a custom locale set in Tolgee takes precedence
         let locale = customLocale ?? providedLocale
 
+        let filterRemoteData: Bool
+        if customLocale != nil {
+            filterRemoteData = false
+        } else if providedLocale != .current {
+            filterRemoteData = true
+        } else {
+            filterRemoteData = false
+        }
+
         // First try to get translation from loaded translations
         if let translationEntry = translations[table ?? ""]?[key],
-            language == locale.language.languageCode?.identifier
+            filterRemoteData && language == locale.language.languageCode?.identifier
         {
             switch translationEntry {
             case .simple(let string):

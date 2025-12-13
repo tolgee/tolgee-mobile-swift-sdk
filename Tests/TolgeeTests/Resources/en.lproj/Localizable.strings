@@ -1,0 +1,3 @@
+"Hello, world!" = "[local] Hello, world!";
+"My name is %@" = "[local] My name is %@";
+"name_and_num_apples" = "[local] My name is %@ and I have %lld apples";
