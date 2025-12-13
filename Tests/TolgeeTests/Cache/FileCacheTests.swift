@@ -174,4 +174,114 @@ struct FileCacheTests {
         // ETag should be gone
         #expect(cache.loadCdnEtag(for: etagDescriptor) == nil)
     }
+
+    @Test func testFileCacheClearOldCache() throws {
+        let cache = try createCleanFileCache()
+
+        // Create descriptors for multiple app versions
+        let noVersionDescriptor = CacheDescriptor(
+            language: "en", namespace: nil, appVersionSignature: nil, cdn: cdnURL)
+        let oldVersionDescriptor1 = CacheDescriptor(
+            language: "en", namespace: nil, appVersionSignature: "1.0.0", cdn: cdnURL)
+        let oldVersionDescriptor2 = CacheDescriptor(
+            language: "en", namespace: nil, appVersionSignature: "1.5.0", cdn: cdnURL)
+        let currentVersionDescriptor = CacheDescriptor(
+            language: "en", namespace: nil, appVersionSignature: "2.0.0", cdn: cdnURL)
+        let differentLanguageDescriptor = CacheDescriptor(
+            language: "fr", namespace: nil, appVersionSignature: "1.0.0", cdn: cdnURL)
+
+        let noVersionData = "no version data".data(using: .utf8)!
+        let oldData1 = "old version 1.0.0 data".data(using: .utf8)!
+        let oldData2 = "old version 1.5.0 data".data(using: .utf8)!
+        let currentData = "current version 2.0.0 data".data(using: .utf8)!
+        let differentLanguageData = "different language data".data(using: .utf8)!
+
+        // Save data for all versions
+        try cache.saveRecords(noVersionData, for: noVersionDescriptor)
+        try cache.saveRecords(oldData1, for: oldVersionDescriptor1)
+        try cache.saveRecords(oldData2, for: oldVersionDescriptor2)
+        try cache.saveRecords(currentData, for: currentVersionDescriptor)
+        try cache.saveRecords(differentLanguageData, for: differentLanguageDescriptor)
+
+        // Verify all data is saved
+        #expect(cache.loadRecords(for: noVersionDescriptor) == noVersionData)
+        #expect(cache.loadRecords(for: oldVersionDescriptor1) == oldData1)
+        #expect(cache.loadRecords(for: oldVersionDescriptor2) == oldData2)
+        #expect(cache.loadRecords(for: currentVersionDescriptor) == currentData)
+        #expect(cache.loadRecords(for: differentLanguageDescriptor) == differentLanguageData)
+
+        // Clear old cache for current version
+        cache.clearOldCache(descriptor: currentVersionDescriptor)
+
+        // No version and old versions should be deleted
+        #expect(cache.loadRecords(for: noVersionDescriptor) == nil)
+        #expect(cache.loadRecords(for: oldVersionDescriptor1) == nil)
+        #expect(cache.loadRecords(for: oldVersionDescriptor2) == nil)
+
+        // Current version should still exist
+        #expect(cache.loadRecords(for: currentVersionDescriptor) == currentData)
+
+        // Different language should not be affected
+        #expect(cache.loadRecords(for: differentLanguageDescriptor) == differentLanguageData)
+    }
+
+    @Test func testFileCacheClearOldCacheWithNamespace() throws {
+        let cache = try createCleanFileCache()
+
+        // Create descriptors with namespace for multiple versions
+        let oldVersionDescriptor = CacheDescriptor(
+            language: "de", namespace: "common", appVersionSignature: "1.0.0", cdn: cdnURL)
+        let currentVersionDescriptor = CacheDescriptor(
+            language: "de", namespace: "common", appVersionSignature: "2.0.0", cdn: cdnURL)
+
+        // Also create descriptors for different namespace/language to ensure they're not affected
+        let differentNamespaceDescriptor = CacheDescriptor(
+            language: "de", namespace: "errors", appVersionSignature: "1.0.0", cdn: cdnURL)
+        let differentLanguageDescriptor = CacheDescriptor(
+            language: "fr", namespace: "common", appVersionSignature: "1.0.0", cdn: cdnURL)
+
+        let oldData = "old version data".data(using: .utf8)!
+        let currentData = "current version data".data(using: .utf8)!
+        let differentNamespaceData = "different namespace data".data(using: .utf8)!
+        let differentLanguageData = "different language data".data(using: .utf8)!
+
+        // Save all data
+        try cache.saveRecords(oldData, for: oldVersionDescriptor)
+        try cache.saveRecords(currentData, for: currentVersionDescriptor)
+        try cache.saveRecords(differentNamespaceData, for: differentNamespaceDescriptor)
+        try cache.saveRecords(differentLanguageData, for: differentLanguageDescriptor)
+
+        // Clear old cache for current version
+        cache.clearOldCache(descriptor: currentVersionDescriptor)
+
+        // Old version with same namespace should be deleted
+        #expect(cache.loadRecords(for: oldVersionDescriptor) == nil)
+
+        // Current version should still exist
+        #expect(cache.loadRecords(for: currentVersionDescriptor) == currentData)
+
+        // Different namespace and language should not be affected
+        #expect(cache.loadRecords(for: differentNamespaceDescriptor) == differentNamespaceData)
+        #expect(cache.loadRecords(for: differentLanguageDescriptor) == differentLanguageData)
+    }
+
+    @Test func testFileCacheClearOldCacheWithoutAppVersionSignature() throws {
+        let cache = try createCleanFileCache()
+
+        // Create descriptor without app version signature
+        let descriptor = CacheDescriptor(
+            language: "en", namespace: nil, appVersionSignature: nil, cdn: cdnURL)
+        let testData = "test data".data(using: .utf8)!
+
+        // Save data
+        try cache.saveRecords(testData, for: descriptor)
+        #expect(cache.loadRecords(for: descriptor) == testData)
+
+        // Call clearOldCache with descriptor without appVersionSignature
+        // This should do nothing (as per implementation)
+        cache.clearOldCache(descriptor: descriptor)
+
+        // Data should still exist
+        #expect(cache.loadRecords(for: descriptor) == testData)
+    }
 }
