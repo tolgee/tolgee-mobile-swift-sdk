@@ -19,6 +19,7 @@ protocol CacheProtocol: Sendable {
     func clearAll() throws
     func loadCdnEtag(for descriptor: CdnEtagDescriptor) -> String?
     func saveCdnEtag(_ descriptor: CdnEtagDescriptor, etag: String) throws
+    func clearOldCache(descriptor: CacheDescriptor)
 }
 
 final class FileCache: CacheProtocol {
@@ -102,6 +103,33 @@ final class FileCache: CacheProtocol {
         }
 
         return cdnCacheDirectory.appendingPathComponent(filename)
+    }
+
+    func clearOldCache(descriptor: CacheDescriptor) {
+        guard descriptor.appVersionSignature != nil else { return }
+        guard let cacheURL = cacheFileURL(for: descriptor) else { return }
+        guard let cdnCacheDirectory = cacheDirectory(for: descriptor.cdn) else { return }
+
+        let currentFilename = cacheURL.lastPathComponent
+        let searchPrefix = currentFilename.replacingOccurrences(
+            of: "_\(descriptor.appVersionSignature!).json",
+            with: ""  // this will also cover the case without appVersionSignature
+        )
+
+        // Get all files in the CDN cache directory
+        guard
+            let files = try? FileManager.default.contentsOfDirectory(atPath: cdnCacheDirectory.path)
+        else {
+            return
+        }
+
+        // Find and delete files that match the prefix but aren't the current file
+        for file in files {
+            if file.hasPrefix(searchPrefix) && file != currentFilename {
+                let fileURL = cdnCacheDirectory.appendingPathComponent(file)
+                try? FileManager.default.removeItem(at: fileURL)
+            }
+        }
     }
 
     func loadRecords(for descriptor: CacheDescriptor) -> Data? {

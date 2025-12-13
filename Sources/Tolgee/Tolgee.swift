@@ -608,11 +608,21 @@ public final class Tolgee {
             return
         }
 
-        // Track whether we found any cached data for this app version
-        var foundAnyCache = false
+        // Clear old cache files for base namespace
+        cache.clearOldCache(
+            descriptor: CacheDescriptor(
+                language: language, appVersionSignature: appVersionSignature,
+                cdn: cdn.absoluteString))
+
+        // Clear old cache files for all namespaces
+        for namespace in namespaces {
+            cache.clearOldCache(
+                descriptor: CacheDescriptor(
+                    language: language, namespace: namespace,
+                    appVersionSignature: appVersionSignature, cdn: cdn.absoluteString))
+        }
 
         if let etag = cache.loadCdnEtag(for: .init(language: language, cdn: cdn.absoluteString)) {
-            foundAnyCache = true
             cdnEtags[""] = etag
             logger.debug(
                 "Loaded CDN ETag for language: \(language) and base namespace - ETag: \(etag)")
@@ -625,7 +635,6 @@ public final class Tolgee {
                 language: language, appVersionSignature: appVersionSignature,
                 cdn: cdn.absoluteString))
         {
-            foundAnyCache = true
             do {
                 // Load cached translations
                 let translations = try JSONParser.loadTranslations(from: data)
@@ -645,7 +654,6 @@ public final class Tolgee {
             if let etag = cache.loadCdnEtag(
                 for: .init(language: language, namespace: namespace, cdn: cdn.absoluteString))
             {
-                foundAnyCache = true
                 cdnEtags[namespace] = etag
                 logger.debug(
                     "Loaded CDN ETag for language: \(language), namespace: \(namespace) - ETag: \(etag)"
@@ -659,7 +667,6 @@ public final class Tolgee {
                     language: language, namespace: namespace,
                     appVersionSignature: appVersionSignature, cdn: cdn.absoluteString))
             {
-                foundAnyCache = true
                 do {
                     // Load cached translations for each namespace
                     let translations = try JSONParser.loadTranslations(from: data)
@@ -675,17 +682,6 @@ public final class Tolgee {
                 logger.debug(
                     "No cached translations found for language: \(language), namespace: \(namespace)"
                 )
-            }
-        }
-
-        // If no cache was found for the current app version, clear all cache
-        // This ensures we wipe cache files from old app versions
-        if !foundAnyCache {
-            do {
-                try clearCaches()
-                logger.debug("Cleared all cache since no cache found for current app version")
-            } catch {
-                logger.error("Failed to clear cache: \(error)")
             }
         }
     }
