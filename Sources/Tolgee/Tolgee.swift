@@ -45,6 +45,12 @@ public final class Tolgee {
     private var namespaces: Set<String> = []
     private var customLocale: Locale? = nil
 
+    /// The active locale used by the SDK.
+    ///
+    /// This property returns the current locale being used by the Tolgee SDK:
+    /// - If a custom locale has been set via ``initialize(cdn:locale:language:namespaces:enableDebugLogs:)``
+    ///   or ``setCustomLocale(_:language:)``, that locale is returned
+    /// - Otherwise, returns the system's current locale (``Locale.current``)
     public var locale: Locale {
         if let customLocale {
             return customLocale
@@ -93,6 +99,7 @@ public final class Tolgee {
         }
     }
 
+    /// Creates a stream for observing log messages emitted by the Tolgee SDK.
     public func onLogMessage() -> AsyncStream<LogMessage> {
         logger.onLogMessage()
     }
@@ -129,7 +136,8 @@ public final class Tolgee {
     /// try await Tolgee.shared.remoteFetch()
     /// ```
     public func initialize(
-        cdn: URL, locale customLocale: Locale = .current,
+        cdn: URL,
+        locale customLocale: Locale = .current,
         language customLanguage: String? = nil,
         namespaces: Set<String> = [],
         enableDebugLogs: Bool = false
@@ -499,7 +507,7 @@ public final class Tolgee {
 
         // First try to get translation from loaded translations
         if let translationEntry = translations[table ?? ""]?[key],
-            filterRemoteData && language == locale.language.languageCode?.identifier
+            !filterRemoteData || language == locale.language.languageCode?.identifier
         {
             switch translationEntry {
             case .simple(let string):

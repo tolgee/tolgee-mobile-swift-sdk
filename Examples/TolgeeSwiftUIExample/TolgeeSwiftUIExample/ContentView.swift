@@ -27,6 +27,10 @@ struct ContentView: View {
                     } else {
                         Tolgee.shared.setCustomLocale(.current)
                     }
+                    
+                    Task {
+                        await Tolgee.shared.remoteFetch()
+                    }
                 })
                 .pickerStyle(.menu)
             }

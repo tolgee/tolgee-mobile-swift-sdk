@@ -18,6 +18,22 @@
         }
       }
     },
+    "Language switcher:" : {
+      "localizations" : {
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Výběr jazyka:"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language switcher:"
+          }
+        }
+      }
+    },
     "My name is %@" : {
       "extractionState" : "manual",
       "localizations" : {

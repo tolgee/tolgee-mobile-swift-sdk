@@ -12,6 +12,7 @@ class ViewController: UIViewController {
 
     private let label = UILabel()
     private let label2 = UILabel()
+    private let languageSwitcherLabel = UILabel()
     private var updateTask: Task<Void, Never>?
     private var languageOptions: [String?] = []
     private let languageSegmentedControl = UISegmentedControl()
@@ -41,15 +42,11 @@ class ViewController: UIViewController {
         // Setup language picker
         setupLanguagePicker()
 
-        let reloadButton = UIButton(type: .system)
-        reloadButton.setTitle("Reload", for: .normal)
-        reloadButton.addTarget(self, action: #selector(reloadButtonTapped), for: .touchUpInside)
-
         let languagePickerContainer = UIStackView(arrangedSubviews: [
             createLanguagePickerLabel(),
             languageSegmentedControl,
         ])
-        languagePickerContainer.axis = .horizontal
+        languagePickerContainer.axis = .vertical
         languagePickerContainer.spacing = 10
         languagePickerContainer.alignment = .center
 
@@ -64,7 +61,6 @@ class ViewController: UIViewController {
             divider,
             label,
             label2,
-            reloadButton,
         ])
         stackView.axis = .vertical
         stackView.alignment = .center
@@ -88,13 +84,12 @@ class ViewController: UIViewController {
         updateLabels()
     }
 
-    @objc private func reloadButtonTapped() {
-        updateLabels()
-    }
-
     private func updateLabels() {
+        // Use the SDK directly
         label.text = Tolgee.shared.translate("My name is %@ and I have %lld apples", "John", 3)
+        // Or use NSLocalizedString with swizzling enabled
         label2.text = String(format: NSLocalizedString("My name is %@", comment: ""), "John")
+        languageSwitcherLabel.text = NSLocalizedString("Language switcher:", comment: "")
     }
 
     private func setupLanguagePicker() {
@@ -120,10 +115,8 @@ class ViewController: UIViewController {
     }
 
     private func createLanguagePickerLabel() -> UILabel {
-        let label = UILabel()
-        label.text = Tolgee.shared.translate("Language switcher:")
-        label.font = .systemFont(ofSize: 17)
-        return label
+        languageSwitcherLabel.font = .systemFont(ofSize: 17)
+        return languageSwitcherLabel
     }
 
     @objc private func languageChanged() {
@@ -136,6 +129,10 @@ class ViewController: UIViewController {
             Tolgee.shared.setCustomLocale(Locale(identifier: language))
         } else {
             Tolgee.shared.setCustomLocale(.current)
+        }
+        
+        Task {
+            await Tolgee.shared.remoteFetch()
         }
     }
 
