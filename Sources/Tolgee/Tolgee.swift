@@ -210,36 +210,35 @@ public final class Tolgee {
 
     /// Fetches the latest translations from the CDN.
     ///
-    /// This method explicitly fetches translations from the configured CDN URL for the current
+    /// This method explicitly fetches translations from the configured CDN URL. By default, it fetches the current
     /// language and namespaces. It will update cached translations and notify observers when
-    /// the fetch completes.
+    /// the fetch completes. You can optionally specify a different language to fetch using the language parameter.
+    /// If you specify a different language than the current one, the translations will be prefetched but not applied.
     ///
+    /// - Parameters:
+    ///   - fetchDifferentLanguage: An optional language code to fetch different from the current one.
+    ///     If provided, translations for this language will be fetched but not applied to the current state.
     /// - Note: This method requires that Tolgee has been initialized with a CDN URL.
     ///   The method will return early if these prerequisites are not met.
-    public func remoteFetch() async {
+    public func remoteFetch(language fetchDifferentLanguage: String? = nil) async {
         guard let cdnURL, let language, language.isEmpty == false else {
             return
         }
 
-        logger.debug(
-            String(
-                "Fetching translations from CDN for language: \(language), namespaces: \(namespaces)"
-            ))
+        let languageBeingFetched = fetchDifferentLanguage ?? language
 
-        // Construct file paths for all translation files
-        var files: [FetchCdnService.CdnFile] = [
-            .init(path: "\(language).json", etag: cdnEtags[""])
-        ]  // Base language file
-        for namespace in namespaces {
-            files.append(.init(path: "\(namespace)/\(language).json", etag: cdnEtags[namespace]))  // Namespace files
-        }
-
-        let languageBeingFetched = language
+        let fetchUseCase = RemoteFetchUseCase(
+            cdnURL: cdnURL,
+            language: languageBeingFetched,
+            namespaces: namespaces,
+            appVersionSignature: appVersionSignature,
+            cdnEtags: cdnEtags,
+            fetchCdnService: fetchCdnService,
+            cache: cache,
+            logger: logger)
 
         do {
-            let translationData = try await fetchCdnService.fetchFiles(
-                from: cdnURL,
-                files: files)
+            let response = try await fetchUseCase()
 
             guard self.language == languageBeingFetched else {
                 logger.debug(
@@ -248,108 +247,24 @@ public final class Tolgee {
                 return
             }
 
-            try await Task.checkCancellation()
+            try Task.checkCancellation()
 
-            // Process the fetched translation data
-            for (filePath, result) in translationData {
-
-                let data = result.0
-                guard let response = result.1 as? HTTPURLResponse else {
-                    logger.error(
-                        "Invalid response for file path: \(filePath). It's not an HTTP response.")
-                    continue
-                }
-
-                // Determine the table name from the file path
-                let table: String
-                if filePath == "\(language).json" {
-                    table = ""  // Base table
-                } else {
-                    // Extract table name from "table/language.json" format
-                    table = String(filePath.prefix(while: { $0 != "/" }))
-                }
-
-                let returnedEtag = response.allHeaderFields["Etag"] as? String
-
-                do {
-
-                    if let returnedEtag, returnedEtag.isEmpty == false,
-                        returnedEtag == cdnEtags[table]
-                    {
-                        // I don't feel comfortable disabling the default caching and redirect handling of URLSession
-                        // so let's just compare the returned Etag with the last known one and return early if they match.
-                        logger.debug(
-                            "No changes for table '\(table)' based on ETag, skipping update")
-                        continue
-                    } else if response.statusCode >= 400 {
-                        logger.error(
-                            "Failed to fetch translations for table '\(table)': HTTP \(response.statusCode)"
-                        )
-                        continue
-                    }
-
-                    let translations = try JSONParser.loadTranslations(from: data)
-
-                    if self.translations[table] == translations {
-                        logger.debug("Translations for table '\(table)' are already up-to-date")
-                        continue
-                    }
-
-                    self.translations[table] = translations
-
-                    // Cache the fetched data
-                    let descriptor: CacheDescriptor
-                    if table.isEmpty {
-                        descriptor = CacheDescriptor(
-                            language: language, appVersionSignature: self.appVersionSignature,
-                            cdn: cdnURL.absoluteString)
-                    } else {
-                        descriptor = CacheDescriptor(
-                            language: language, namespace: table,
-                            appVersionSignature: self.appVersionSignature,
-                            cdn: cdnURL.absoluteString)
-                    }
-
-                    do {
-                        try self.cache.saveRecords(data, for: descriptor)
-                    } catch {
-                        self.logger.error("Failed to save translations to cache: \(error)")
-                    }
-
-                    if let etag = response.allHeaderFields["Etag"] as? String {
-                        let etagDescriptor: CdnEtagDescriptor
-                        if table.isEmpty {
-                            etagDescriptor = CdnEtagDescriptor(
-                                language: language,
-                                cdn: cdnURL.absoluteString)
-                        } else {
-                            etagDescriptor = CdnEtagDescriptor(
-                                language: language, namespace: table,
-                                cdn: cdnURL.absoluteString)
-                        }
-                        try self.cache.saveCdnEtag(etagDescriptor, etag: etag)
-                        self.cdnEtags[table] = etag
-                    } else {
-                        self.logger.info(
-                            "No etag header found for \(cdnURL.appending(component: filePath))")
-                    }
-
-                    logger.debug(
-                        "Cached translations for language: \(language), namespace: \(table.isEmpty ? "base" : table)"
-                    )
-                } catch {
-                    logger.error("Error loading translations for table '\(table)': \(error)")
-                }
+            for (table, translations) in response.translations {
+                self.translations[table] = translations
             }
 
-            lastFetchDate = Date()
-            onTranslationsUpdatedSubscribers.forEach {
+            for (table, etag) in response.cdnEtags {
+                self.cdnEtags[table] = etag
+            }
+
+            self.lastFetchDate = Date()
+            self.onTranslationsUpdatedSubscribers.forEach {
                 $0.yield(())
             }
-            logger.debug(
-                "Translations fetched successfully at \(self.lastFetchDate ?? .distantPast)")
+
         } catch {
             logger.error("Failed to fetch remote translations: \(error)")
+            return
         }
     }
 
