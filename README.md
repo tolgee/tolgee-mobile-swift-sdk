@@ -238,13 +238,13 @@ You can set a custom language when initializing Tolgee:
 Tolgee.shared.initialize(
     cdn: cdnURL,
     locale: Locale(identifier: "pt_BR"), // Override the system locale
-    language: "pt" // Override the language name on Tolgee CDN
+    language: "pt_BR" // Override the language name on Tolgee CDN
 )
 
 // Or just override the locale (language is extracted automatically)
 Tolgee.shared.initialize(
     cdn: cdnURL,
-    locale: Locale(identifier: "es")
+    locale: Locale(identifier: "pt_BR")
 )
 ```
 
@@ -258,8 +258,8 @@ Tolgee.shared.setCustomLocale(Locale(identifier: "fr"))
 
 // Or specify a custom language for the CDN if it differs from the locale
 Tolgee.shared.setCustomLocale(
-    Locale(identifier: "en_GB"),
-    language: "en" // CDN language code
+    Locale(identifier: "pt_BR"),
+    language: "pt_BR" // CDN language code
 )
 
 // Fetch translations for the new language
