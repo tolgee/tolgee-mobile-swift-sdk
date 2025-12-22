@@ -50,7 +50,9 @@ public final class Tolgee {
 
     private var language: String?
     private var namespaces: Set<String> = []
+
     private var customLocale: Locale? = nil
+    private var customLocalLanguage: String? = nil
 
     /// The active locale used by the SDK.
     ///
@@ -165,27 +167,28 @@ public final class Tolgee {
             Bundle.swizzle()
         }
 
-        if let customCdnLanguage = customCdnLanguage {
-            self.language = customCdnLanguage
-        } else {
-            guard let cdnLanguage = try? resolveCdnLanguage(from: customLocale) else {
-                return
-            }
+        let languages = try? resolveLanguages(from: customLocale)
 
-            self.language = cdnLanguage
-        }
+        self.language = customCdnLanguage ?? languages?.cdnLanguage
 
         guard let language else {
             logger.error("Language must be specified for Tolgee initialization")
             return
         }
 
-        cdnURL = cdn
-        self.namespaces = namespaces
-
         if customLocale != .current {
+            guard let customLocalLanguage = languages?.localLaunguage else {
+                logger.error(
+                    "The provided locale \(customLocale.identifier) is not supported by the app localizations"
+                )
+                return
+            }
+            self.customLocalLanguage = customLocalLanguage
             self.customLocale = customLocale
         }
+
+        cdnURL = cdn
+        self.namespaces = namespaces
 
         loadMemoryCache()
 
@@ -330,15 +333,15 @@ public final class Tolgee {
         // Fallback to bundle.localizedString
 
         var bundle = bundle
-        if let customLocale {
+        if let customLocalLanguage {
             if let replacementBundle = bundleRepository.bundle(
-                for: customLocale.identifier.lowercased().replacingOccurrences(of: "_", with: "-"),
+                for: customLocalLanguage,
                 referenceBundle: bundle)
             {
                 bundle = replacementBundle
             } else {
                 logger.error(
-                    "No localization bundle found for locale \(customLocale.identifier) in bundle \(bundle.bundlePath)"
+                    "No localization bundle found for locale \(customLocale?.identifier ?? "") in bundle \(bundle.bundlePath)"
                 )
             }
         }
@@ -397,19 +400,8 @@ public final class Tolgee {
         // Having a custom locale set in Tolgee takes precedence
         let locale = customLocale ?? providedLocale
 
-        let filterRemoteData: Bool
-        if customLocale != nil {
-            filterRemoteData = false
-        } else if providedLocale != .current {
-            filterRemoteData = true
-        } else {
-            filterRemoteData = false
-        }
-
         // First try to get translation from loaded translations
-        if let translationEntry = translations[table ?? ""]?[key],
-            !filterRemoteData || language == locale.language.languageCode?.identifier
-        {
+        if let translationEntry = translations[table ?? ""]?[key] {
             switch translationEntry {
             case .simple(let string):
                 // If we have arguments, try to format the string
@@ -499,22 +491,35 @@ public final class Tolgee {
             throw TolgeeError.sdkNotInitialized
         }
 
-        let newCdnLanguage: String
-        if let cdnLanguage {
-            newCdnLanguage = cdnLanguage
+        let needsLanguageChange: Bool
+        let didUpdateLocale: Bool
+
+        if locale == self.customLocale || (locale == .current && self.customLocale == nil) {
+            if cdnLanguage != self.language {
+                self.language = cdnLanguage
+                needsLanguageChange = true
+            } else {
+                needsLanguageChange = false
+            }
+            didUpdateLocale = false
         } else {
-            newCdnLanguage = try resolveCdnLanguage(from: locale)
-        }
 
-        let needsLanguageChange = newCdnLanguage != self.language
-        let didUpdateLocale = locale != self.customLocale
+            let languages = try resolveLanguages(from: locale)
 
-        self.language = newCdnLanguage
+            let newCdnLanguage = cdnLanguage ?? languages.cdnLanguage
 
-        if locale == .current {
-            self.customLocale = nil
-        } else {
-            self.customLocale = locale
+            needsLanguageChange = newCdnLanguage != self.language
+
+            self.language = newCdnLanguage
+
+            if locale == .current {
+                self.customLocale = nil
+                self.customLocalLanguage = nil
+            } else {
+                self.customLocale = locale
+                self.customLocalLanguage = languages.localLaunguage
+            }
+            didUpdateLocale = true
         }
 
         if needsLanguageChange {
@@ -628,13 +633,13 @@ public final class Tolgee {
         }
     }
 
-    private func resolveCdnLanguage(from locale: Locale)
-        throws -> String
+    private func resolveLanguages(from locale: Locale)
+        throws -> (localLaunguage: String, cdnLanguage: String)
     {
         if let localLanguage = resolveLanguage(for: locale, in: bundleForLanguageDetection),
             doesLocaleMatchLanguage(locale, language: localLanguage)
         {
-            return localLanguageToCdnLanguage(localLanguage)
+            return (localLanguage, localLanguageToCdnLanguage(localLanguage))
         } else {
             logger.error(
                 "The provided locale \(locale.identifier) is not supported by the app localizations"
