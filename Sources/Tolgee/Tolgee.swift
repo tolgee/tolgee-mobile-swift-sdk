@@ -347,7 +347,8 @@ public final class Tolgee {
         var bundle = bundle
         if let customLocale {
             if let replacementBundle = bundleRepository.bundle(
-                for: customLocale, referenceBundle: bundle)
+                for: customLocale.identifier.lowercased().replacingOccurrences(of: "_", with: "-"),
+                referenceBundle: bundle)
             {
                 bundle = replacementBundle
             } else {
