@@ -1,9 +1,15 @@
 import Combine
 import Foundation
 
+// FIXME: This should be a struct to avoid breaking changes when adding a new case
+// Or use that unfrozen enums feature when available
+
+/// Errors that can occur within the Tolgee SDK.
 public enum TolgeeError: Error {
     case invalidJSONString
     case translationNotFound
+    case unsupportedLocale
+    case sdkNotInitialized
 }
 
 /// The main Tolgee SDK class for handling localization and translations.
@@ -34,7 +40,8 @@ public final class Tolgee {
     public static let shared = Tolgee(
         urlSession: URLSession(configuration: .default),
         cache: FileCache(),
-        appVersionSignature: getAppVersionSignature())
+        appVersionSignature: getAppVersionSignature(),
+        bundleForLanguageDetection: .main)
 
     // table - [key - TranslationEntry]
     private var translations: [String: [String: TranslationEntry]] = [:]
@@ -65,6 +72,7 @@ public final class Tolgee {
     private let cache: CacheProtocol
     // TODO: Make bundle repository mockable for testing
     private let bundleRepository = BundleRepository()
+    private let bundleForLanguageDetection: Bundle
 
     /// Indicates whether the Tolgee SDK has been initialized.
     ///
@@ -106,11 +114,13 @@ public final class Tolgee {
 
     init(
         urlSession: URLSessionProtocol, cache: CacheProtocol,
-        appVersionSignature: String?
+        appVersionSignature: String?,
+        bundleForLanguageDetection: Bundle
     ) {
         self.appVersionSignature = appVersionSignature
         self.fetchCdnService = FetchCdnService(urlSession: urlSession)
         self.cache = cache
+        self.bundleForLanguageDetection = bundleForLanguageDetection
     }
 
     /// Initializes the Tolgee SDK.
@@ -138,7 +148,7 @@ public final class Tolgee {
     public func initialize(
         cdn: URL,
         locale customLocale: Locale = .current,
-        language customLanguage: String? = nil,
+        language customCdnLanguage: String? = nil,
         namespaces: Set<String> = [],
         enableDebugLogs: Bool = false
     ) {
@@ -155,39 +165,14 @@ public final class Tolgee {
             Bundle.swizzle()
         }
 
-        if customLanguage == nil {
-            if customLocale != .current {
-                // If a custom locale is provided, use its language
-                if let languageCode = customLocale.language.languageCode?.identifier {
-                    self.language = languageCode
-                    logger.debug("Using language from custom locale: \(languageCode)")
-                } else {
-                    logger.error(
-                        "Failed to determine language identifier from custom locale \(customLocale.identifier)"
-                    )
-                    return
-                }
-            } else {
-                // I think that we'll need to extend this logic to match it with localizations available on the CDN.
-                guard let preferredLanguage = Locale.preferredLanguages.first else {
-                    logger.error("Failed to determine preferred language")
-                    return
-                }
-
-                guard
-                    let languageIdentifier = Locale(identifier: preferredLanguage).language
-                        .languageCode?.identifier
-                else {
-                    logger.error(
-                        "Failed to determine language identifier from preferred language \(preferredLanguage)"
-                    )
-                    return
-                }
-                self.language = languageIdentifier
-                logger.debug("Automatically detected preferred language: \(languageIdentifier)")
-            }
+        if let customCdnLanguage = customCdnLanguage {
+            self.language = customCdnLanguage
         } else {
-            self.language = customLanguage
+            guard let cdnLanguage = try? resolveCdnLanguage(from: customLocale) else {
+                return
+            }
+
+            self.language = cdnLanguage
         }
 
         guard let language else {
@@ -508,22 +493,23 @@ public final class Tolgee {
     ///
     /// - Important: When the language changes, call ``remoteFetch()`` to fetch
     ///   translations for the new language from the CDN.
-    public func setCustomLocale(_ locale: Locale, language: String? = nil) {
+    public func setCustomLocale(_ locale: Locale, language cdnLanguage: String? = nil) throws {
         guard isInitialized else {
             logger.error("Tolgee must be initialized before setting a custom locale")
-            return
+            throw TolgeeError.sdkNotInitialized
         }
 
-        guard let newLanguage = language ?? locale.language.languageCode?.identifier else {
-            logger.error(
-                "Failed to determine language identifier from locale: \(locale.identifier)")
-            return
+        let newCdnLanguage: String
+        if let cdnLanguage {
+            newCdnLanguage = cdnLanguage
+        } else {
+            newCdnLanguage = try resolveCdnLanguage(from: locale)
         }
 
-        let needsLanguageChange = newLanguage != self.language
+        let needsLanguageChange = newCdnLanguage != self.language
         let didUpdateLocale = locale != self.customLocale
 
-        self.language = newLanguage
+        self.language = newCdnLanguage
 
         if locale == .current {
             self.customLocale = nil
@@ -639,6 +625,21 @@ public final class Tolgee {
                     "No cached translations found for language: \(language), namespace: \(namespace)"
                 )
             }
+        }
+    }
+
+    private func resolveCdnLanguage(from locale: Locale)
+        throws -> String
+    {
+        if let localLanguage = resolveLanguage(for: locale, in: bundleForLanguageDetection),
+            doesLocaleMatchLanguage(locale, language: localLanguage)
+        {
+            return localLanguageToCdnLanguage(localLanguage)
+        } else {
+            logger.error(
+                "The provided locale \(locale.identifier) is not supported by the app localizations"
+            )
+            throw TolgeeError.unsupportedLocale
         }
     }
 }
