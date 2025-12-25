@@ -15,7 +15,8 @@ final class TestContext {
     self.tolgee = Tolgee(
       urlSession: urlSession,
       cache: cache,
-      appVersionSignature: "1.0.0-1"
+      appVersionSignature: "1.0.0-1",
+      bundleForLanguageDetection: .module
     )
   }
 }
