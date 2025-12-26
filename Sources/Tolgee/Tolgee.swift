@@ -211,7 +211,7 @@ public final class Tolgee {
     /// If you specify a different language than the current one, the translations will be prefetched but not applied.
     ///
     /// - Parameters:
-    ///   - fetchDifferentLanguage: An optional language code to fetch different from the current one.
+    ///   - language: An optional language code to fetch different from the current one.
     ///     If provided, translations for this language will be fetched but not applied to the current state.
     ///
     /// - Note: This method requires that Tolgee has been initialized with a CDN URL.
