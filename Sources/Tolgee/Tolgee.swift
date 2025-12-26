@@ -284,12 +284,37 @@ public final class Tolgee {
     /// let buttonText = tolgee.translate("save_button", table: "Buttons")
     /// ```
     public func translate(
-        _ key: String, _ arguments: CVarArg..., table: String? = nil, bundle: Bundle = .main
+        _ key: String, _ arguments: CVarArg..., table: String? = nil, bundle: Bundle = .main,
+        locale providedLocale: Locale = .current
     )
         -> String
     {
+        if providedLocale != .current && customLocale != nil {
+            logger.error(
+                "Both a custom locale is set on Tolgee and a different locale is provided in the translate() method. The custom locale on Tolgee will take precedence."
+            )
+        }
+
+        var customLocalLanguage = self.customLocalLanguage
+        let locale = customLocale ?? providedLocale
+        var canUseDataFromCdn = true
+
+        // Setting ccustom locale on SDK lavel overrides provided locale in method param
+        if customLocale == nil && providedLocale != .current {
+            guard let localLanguage = resolveLanguage(for: locale, in: bundleForLanguageDetection),
+                doesLocaleMatchLanguage(locale, language: localLanguage)
+            else {
+                logger.error(
+                    "The provided locale \(providedLocale.identifier) is not supported by the app localizations"
+                )
+                return key
+            }
+            customLocalLanguage = localLanguage
+            canUseDataFromCdn = false
+        }
+
         // First try to get translation from loaded translations
-        if let translationEntry = translations[table ?? ""]?[key] {
+        if let translationEntry = translations[table ?? ""]?[key], canUseDataFromCdn {
             switch translationEntry {
             case .simple(let string):
                 // If we have arguments, try to format the string
@@ -348,103 +373,6 @@ public final class Tolgee {
 
         // !!! when swizzling is enabled, we use the original method to avoid infinite recursion
         let localizedString = bundle.originalLocalizedString(forKey: key, value: nil, table: table)
-
-        // If we have arguments, try to format the string
-        if !arguments.isEmpty {
-            return String(format: localizedString, locale: locale, arguments: arguments)
-        }
-
-        return localizedString
-    }
-
-    /// Translates a given key to a localized string with optional format arguments and custom locale.
-    ///
-    /// This method provides the same functionality as the basic translate method but allows you to
-    /// specify a custom locale for both plural rule evaluation and bundle localization fallback.
-    /// It first attempts to find the translation in the loaded Tolgee translations, including
-    /// support for ICU plural forms and format specifiers. If not found, it falls back to the
-    /// bundle's localized string mechanism using the specified locale.
-    ///
-    /// - Parameters:
-    ///   - key: The translation key to look up
-    ///   - arguments: Variable arguments to substitute into the translated string (supports format specifiers like %@, %d, etc.)
-    ///   - table: The name of the strings table to search (optional, defaults to base table)
-    ///   - bundle: The bundle containing the strings file (defaults to main bundle)
-    ///   - locale: The locale to use for plural rule evaluation and bundle fallback (defaults to current locale)
-    /// - Returns: The localized string for the given key with arguments formatted according to the specified locale
-    ///
-    /// ## Usage
-    /// ```swift
-    /// let spanishLocale = Locale(identifier: "es_ES")
-    ///
-    /// // Translation with custom locale
-    /// let greeting = tolgee.translate("hello_name", "María", locale: spanishLocale)
-    ///
-    /// // Plural forms with specific locale
-    /// let itemCount = tolgee.translate("item_count", 3, locale: spanishLocale)
-    ///
-    /// // Useful for testing different localizations
-    /// let testLocale = Locale(identifier: "ja_JP")
-    /// let japaneseText = tolgee.translate("welcome_message", locale: testLocale)
-    /// ```
-    ///
-    /// - Note: Available on iOS 18.4+ and macOS 15.4+ due to the enhanced bundle localization API
-    @available(iOS 18.4, *)
-    @available(macOS 15.4, *)
-    public func translate(
-        _ key: String, _ arguments: CVarArg..., table: String? = nil, bundle: Bundle = .main,
-        locale providedLocale: Locale = .current
-    )
-        -> String
-    {
-        // Having a custom locale set in Tolgee takes precedence
-        let locale = customLocale ?? providedLocale
-
-        // First try to get translation from loaded translations
-        if let translationEntry = translations[table ?? ""]?[key] {
-            switch translationEntry {
-            case .simple(let string):
-                // If we have arguments, try to format the string
-                if !arguments.isEmpty {
-                    return String(format: string, locale: locale, arguments: arguments)
-                }
-                return string
-            case .plural(let variants):
-                let pluralRules = PluralRules(for: locale)
-                if let number = arguments.compactMap({ $0 as? NSNumber }).first {
-                    switch pluralRules.category(for: number.doubleValue) {
-                    case .zero:
-                        if let string = variants.zero {
-                            return String(format: string, locale: locale, arguments: arguments)
-                        }
-                    case .one:
-                        if let string = variants.one {
-                            return String(format: string, locale: locale, arguments: arguments)
-                        }
-                    case .two:
-                        if let string = variants.two {
-                            return String(format: string, locale: locale, arguments: arguments)
-                        }
-                    case .few:
-                        if let string = variants.few {
-                            return String(format: string, locale: locale, arguments: arguments)
-                        }
-                    case .many:
-                        if let string = variants.many {
-                            return String(format: string, locale: locale, arguments: arguments)
-                        }
-                    case .other:
-                        if let string = variants.other {
-                            return String(format: string, locale: locale, arguments: arguments)
-                        }
-                    }
-                }
-            }
-        }
-
-        // Fallback to bundle.localizedString
-        let localizedString = bundle.localizedString(
-            forKey: key, value: nil, table: table, localizations: [locale.language])
 
         // If we have arguments, try to format the string
         if !arguments.isEmpty {

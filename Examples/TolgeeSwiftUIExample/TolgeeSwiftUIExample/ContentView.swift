@@ -22,13 +22,13 @@ struct ContentView: View {
             HStack {
                 TolgeeText("Language switcher:")
                 LanguagePicker(onLanguageChange: { language in
-                    if let language {
-                        Tolgee.shared.setCustomLocale(Locale(identifier: language))
-                    } else {
-                        Tolgee.shared.setCustomLocale(.current)
-                    }
-                    
                     Task {
+                        if let language {
+                            try Tolgee.shared.setCustomLocale(Locale(identifier: language))
+                        } else {
+                            try Tolgee.shared.setCustomLocale(.current)
+                        }
+                        
                         await Tolgee.shared.remoteFetch()
                     }
                 })
