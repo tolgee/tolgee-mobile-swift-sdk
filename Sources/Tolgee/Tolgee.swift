@@ -59,7 +59,7 @@ public final class Tolgee {
     /// This property returns the current locale being used by the Tolgee SDK:
     /// - If a custom locale has been set via ``initialize(cdn:locale:language:namespaces:enableDebugLogs:)``
     ///   or ``setCustomLocale(_:language:)``, that locale is returned
-    /// - Otherwise, returns the system's current locale (``Locale.current``)
+    /// - Otherwise, returns the system's current locale (`Locale.current`)
     public var locale: Locale {
         if let customLocale {
             return customLocale
@@ -78,21 +78,25 @@ public final class Tolgee {
 
     /// Indicates whether the Tolgee SDK has been initialized.
     ///
-    /// This property becomes `true` after the first successful call to `initialize(cdn:language:namespaces:)`.
+    /// This property becomes `true` after the first successful call to `initialize(cdn:locale:language:namespaces:enableDebugLogs:)`.
     /// Subsequent initialization attempts will be ignored while this remains `true`.
     private(set) public var isInitialized = false
 
     /// The timestamp of the last successful translation fetch from the CDN.
     ///
     /// This property is `nil` until the first successful CDN fetch completes. It's updated
-    /// each time translations are successfully retrieved from the remote CDN, regardless
-    /// of whether the translations actually changed.
+    /// each time translations are successfully retrieved from the remote CDN via `remoteFetch()`.
     private(set) public var lastFetchDate: Date?
 
     private var appVersionSignature: String? = nil
 
     private var onTranslationsUpdatedSubscribers: [ContinuationWrapper<()>] = []
-    /// A stream that allows observing when translations are updated.
+    /// Creates a stream for observing when translations are updated.
+    ///
+    /// This stream emits a value whenever translations are updated, either through
+    /// ``remoteFetch()`` or ``setCustomLocale(_:language:)``.
+    ///
+    /// - Returns: An async stream that yields whenever translations are updated
     public func onTranslationsUpdated() -> AsyncStream<()> {
         AsyncStream<()> { continuation in
             let wrapper = ContinuationWrapper<()>(continuation: continuation)
@@ -110,6 +114,8 @@ public final class Tolgee {
     }
 
     /// Creates a stream for observing log messages emitted by the Tolgee SDK.
+    ///
+    /// - Returns: An async stream of ``LogMessage`` values containing log information
     public func onLogMessage() -> AsyncStream<LogMessage> {
         logger.onLogMessage()
     }
@@ -136,10 +142,11 @@ public final class Tolgee {
     /// The method loads cached translations immediately if available.
     ///
     /// - Parameters:
-    ///   - cdn: The base URL of the Tolgee CDN where translation files are hosted (optional)
-    ///   - locale: Optional custom locale to use for translations and formatting.
-    ///   - language: The target language code on the Tolgee CDN (e.g., "en", "es", "cs"). Use this to override the locale's language when it differs from the CDN language code.
+    ///   - cdn: The base URL of the Tolgee CDN where translation files are hosted
+    ///   - locale: Custom locale to use for translations and formatting (defaults to `.current`)
+    ///   - language: The target language code on the Tolgee CDN (e.g., "en", "pt-BR", "cs"). Use this to override the locale's language when it differs from the CDN language code.
     ///   - namespaces: A set of namespace identifiers for organizing translations into logical groups (defaults to empty set)
+    ///   - enableDebugLogs: Whether to enable debug logging (defaults to `false`)
     ///
     /// ## Usage
     /// ```swift
@@ -206,6 +213,7 @@ public final class Tolgee {
     /// - Parameters:
     ///   - fetchDifferentLanguage: An optional language code to fetch different from the current one.
     ///     If provided, translations for this language will be fetched but not applied to the current state.
+    ///
     /// - Note: This method requires that Tolgee has been initialized with a CDN URL.
     ///   The method will return early if these prerequisites are not met.
     public func remoteFetch(language fetchDifferentLanguage: String? = nil) async {
@@ -267,6 +275,12 @@ public final class Tolgee {
     ///   - arguments: Variable arguments to substitute into the translated string (supports format specifiers like %@, %d, etc.)
     ///   - table: The name of the strings table to search (optional, defaults to base table)
     ///   - bundle: The bundle containing the strings file (defaults to main bundle)
+    ///   - locale: A custom locale to use for this specific translation (defaults to `.current`).
+    ///     This parameter is primarily intended for SwiftUI previews. When set to a non-current locale,
+    ///     translations from the CDN will be ignored and only bundle localizations will be used.
+    ///     Note: If a custom locale is set on the SDK level via ``setCustomLocale(_:language:)``,
+    ///     it will take precedence and this parameter will be ignored.
+    ///
     /// - Returns: The localized string for the given key with arguments formatted, or the fallback value
     ///
     /// ## Usage
@@ -389,6 +403,9 @@ public final class Tolgee {
     ///
     /// - Throws: An error if the cache clearing operation fails.
     public func clearCaches() throws {
+        lastFetchDate = nil
+        translations.removeAll()
+        cdnEtags.removeAll()
         cdnEtags.removeAll()
         try cache.clearAll()
         logger.debug("Successfully cleared all cached translations and ETag data")
@@ -407,6 +424,9 @@ public final class Tolgee {
     ///     to reset to the system locale.
     ///   - language: Optional language code on the Tolgee CDN (e.g., "en", "es", "cs"). If `nil`, the language
     ///     is extracted from the locale. Use this to override the locale's language when it differs from the CDN language code.
+    ///
+    /// - Throws: ``TolgeeError.sdkNotInitialized`` if the SDK has not been initialized,
+    ///   or ``TolgeeError.unsupportedLocale`` if the locale is not supported by the app localizations.
     ///
     /// - Note: The SDK must be initialized before calling this method. If the locale
     ///   is already set to the requested value, no action is taken.
@@ -451,7 +471,7 @@ public final class Tolgee {
         }
 
         if needsLanguageChange {
-
+            lastFetchDate = nil
             translations.removeAll()
             cdnEtags.removeAll()
             loadMemoryCache()
