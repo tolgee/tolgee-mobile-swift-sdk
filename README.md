@@ -99,8 +99,8 @@ Refer to our SwiftUI and UIKit examples for a complete setup.
 // Initialize with specific language and namespaces
 Tolgee.shared.initialize(
     cdn: URL(string: "https://cdn.tolgee.io/your-project-id")!,
-    locale: Locale(initializer: "pt_BR") // overwrite the system locale
-    language: "pt", // overwrite the langage name on Tolgee CDN
+    locale: Locale(identifier: "pt_BR"), // Override the system locale
+    language: "pt-BR", // Override the language name on Tolgee CDN
     namespaces: ["buttons", "errors", "onboarding"], // Organize translations
     enableDebugLogs: true // Enable detailed logging for development
 )
@@ -176,7 +176,7 @@ struct ContentView: View {
 ```
 
 > [!NOTE]
-> Providing custom locale in `translate(...)` methods is ignored if you set a custom locale using `initialize(...)` or `setCustomLocale(...)` methods.
+> The `locale` parameter in `translate(...)` methods is primarily intended for SwiftUI previews. When set to a non-current locale, translations from the CDN will be ignored and only bundle localizations will be used. If a custom locale is set on the SDK level via `initialize(...)` or `setCustomLocale(...)`, it will take precedence and the locale parameter will be ignored.
 
 ### Reactive Updates
 
@@ -234,7 +234,7 @@ You can set a custom language when initializing Tolgee:
 Tolgee.shared.initialize(
     cdn: cdnURL,
     locale: Locale(identifier: "pt_BR"), // Override the system locale
-    language: "pt_BR" // Override the language name on Tolgee CDN
+    language: "pt-BR" // Override the language name on Tolgee CDN
 )
 
 // Or just override the locale (language is extracted automatically)
@@ -250,12 +250,12 @@ Use `setCustomLocale(_:language:)` to change the language dynamically:
 
 ```swift
 // Set custom locale (language is extracted automatically)
-Tolgee.shared.setCustomLocale(Locale(identifier: "fr"))
+try Tolgee.shared.setCustomLocale(Locale(identifier: "fr"))
 
 // Or specify a custom language for the CDN if it differs from the locale
-Tolgee.shared.setCustomLocale(
+try Tolgee.shared.setCustomLocale(
     Locale(identifier: "pt_BR"),
-    language: "pt_BR" // CDN language code
+    language: "pt-BR" // CDN language code
 )
 
 // Fetch translations for the new language
@@ -267,7 +267,7 @@ await Tolgee.shared.remoteFetch()
 To return to the device's system language:
 
 ```swift
-Tolgee.shared.setCustomLocale(.current)
+try Tolgee.shared.setCustomLocale(.current)
 await Tolgee.shared.remoteFetch()
 ```
 
@@ -326,7 +326,7 @@ for await logMessage in Tolgee.shared.onLogMessage() {
 ## ⚙️ Requirements
 
 - **Swift:** 6.0+
-- **Xcode:** 16.3+
+- **Xcode:** 16.0+
 
 ## 🧵 Thread-safety
 
