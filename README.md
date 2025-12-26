@@ -131,7 +131,7 @@ let nameAndAge = Tolgee.shared.translate("My name is %@ and I'm %lld years old",
 
 Tolgee works great with SwiftUI, including previewing views in different localizations using SwiftUI previews.
 
-You can use the `TolgeeText` component which will automatically use the injected locale on iOS 18.4+
+You can use the `TolgeeText` component which will automatically use the injected locale
 ```swift
 import SwiftUI
 import Tolgee
@@ -153,18 +153,14 @@ struct ContentView: View {
 }
 ```
 
-or use a version of the `translate` method that accepts `locale` param on iOS 18.4 and newer. The older implementation will fall back to the system language.
+or use a version of the `translate` method that accepts `locale` param.
 
 ```swift
 struct ContentView: View {
     @Environment(\.locale) var locale
     
     var body: some View {
-        if #available(iOS 18.4, *) {
-            Text(Tolgee.shared.translate("welcome_title", locale: locale))
-        } else {
-            Text(Tolgee.shared.translate("welcome_title"))
-        }
+        Text(Tolgee.shared.translate("welcome_title", locale: locale))
     }
 }
 

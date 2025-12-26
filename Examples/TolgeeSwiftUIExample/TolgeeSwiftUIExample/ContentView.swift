@@ -42,11 +42,7 @@ struct ContentView: View {
             
             // Use the SDK directly
             // note: the locale param is only used for SwiftUI preview purposes
-            if #available(iOS 18.4, *) {
-                Text(Tolgee.shared.translate("My name is %@ and I have %lld apples", "John", 3, locale: locale))
-            } else {
-                Text(Tolgee.shared.translate("My name is %@ and I have %lld apples", "John", 3))
-            }
+            Text(Tolgee.shared.translate("My name is %@ and I have %lld apples", "John", 3, locale: locale))
         }
         .padding()
     }

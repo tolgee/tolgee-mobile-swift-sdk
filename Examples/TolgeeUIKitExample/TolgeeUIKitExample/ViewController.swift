@@ -125,13 +125,13 @@ class ViewController: UIViewController {
 
         let selectedLanguage = languageOptions[selectedIndex]
 
-        if let language = selectedLanguage {
-            Tolgee.shared.setCustomLocale(Locale(identifier: language))
-        } else {
-            Tolgee.shared.setCustomLocale(.current)
-        }
-        
         Task {
+            if let language = selectedLanguage {
+                try Tolgee.shared.setCustomLocale(Locale(identifier: language))
+            } else {
+                try Tolgee.shared.setCustomLocale(.current)
+            }
+            
             await Tolgee.shared.remoteFetch()
         }
     }
