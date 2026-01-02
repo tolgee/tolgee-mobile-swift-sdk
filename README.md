@@ -271,6 +271,19 @@ try Tolgee.shared.setCustomLocale(.current)
 await Tolgee.shared.remoteFetch()
 ```
 
+#### Pre-fetching all available languages from the CDN
+
+You can pre-fetch all languages supported by your app:
+
+```swift
+await withTaskGroup(of: Void.self) { group in
+    for language in Bundle.main.localizations {
+        group.addTask {
+            await Tolgee.shared.remoteFetch(language: language)
+        }
+    }
+}
+```
 
 ### Custom Tables/Namespaces
 Tolgee iOS SDK supports loading of local translations from multiple local tables by providing the `table` parameter. When using `.xcstrings` files, the names of the tables match the names of your files without the extension. You do not need to provide the table name when loading strings stored in the default `Localizable.xcstrings` file.
