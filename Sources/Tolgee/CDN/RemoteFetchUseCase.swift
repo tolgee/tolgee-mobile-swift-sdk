@@ -1,6 +1,5 @@
 import Foundation
 
-@MainActor
 final class RemoteFetchUseCase: Sendable {
     private let cdnURL: URL
     private let language: String
@@ -40,7 +39,7 @@ final class RemoteFetchUseCase: Sendable {
 
         var returnResponse = Response(translations: [:], cdnEtags: cdnEtags)
 
-        logger.debug(
+        await logger.debug(
             String(
                 "Fetching translations from CDN for language: \(language), namespaces: \(namespaces)"
             ))
@@ -64,7 +63,7 @@ final class RemoteFetchUseCase: Sendable {
 
             let data = result.0
             guard let response = result.1 as? HTTPURLResponse else {
-                logger.error(
+                await logger.error(
                     "Invalid response for file path: \(filePath). It's not an HTTP response.")
                 continue
             }
@@ -87,11 +86,11 @@ final class RemoteFetchUseCase: Sendable {
                 {
                     // I don't feel comfortable disabling the default caching and redirect handling of URLSession
                     // so let's just compare the returned Etag with the last known one and return early if they match.
-                    logger.debug(
+                    await logger.debug(
                         "No changes for table '\(table)' based on ETag, skipping update")
                     continue
                 } else if response.statusCode >= 400 {
-                    logger.error(
+                    await logger.error(
                         "Failed to fetch translations for table '\(table)': HTTP \(response.statusCode)"
                     )
                     continue
@@ -117,7 +116,7 @@ final class RemoteFetchUseCase: Sendable {
                 do {
                     try self.cache.saveRecords(data, for: descriptor)
                 } catch {
-                    self.logger.error("Failed to save translations to cache: \(error)")
+                    await self.logger.error("Failed to save translations to cache: \(error)")
                 }
 
                 if let etag = response.allHeaderFields["Etag"] as? String {
@@ -134,20 +133,17 @@ final class RemoteFetchUseCase: Sendable {
                     try self.cache.saveCdnEtag(etagDescriptor, etag: etag)
                     returnResponse.cdnEtags[table] = etag
                 } else {
-                    self.logger.info(
+                    await self.logger.info(
                         "No etag header found for \(cdnURL.appending(component: filePath))")
                 }
 
-                logger.debug(
+                await logger.debug(
                     "Cached translations for language: \(language), namespace: \(table.isEmpty ? "base" : table)"
                 )
             } catch {
-                logger.error("Error loading translations for table '\(table)': \(error)")
+                await logger.error("Error loading translations for table '\(table)': \(error)")
             }
         }
-
-        logger.debug(
-            "Translations fetched successfully")
 
         return returnResponse
     }

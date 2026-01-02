@@ -223,6 +223,20 @@ public final class Tolgee {
 
         let languageBeingFetched = fetchDifferentLanguage ?? language
 
+        var cdnEtags = self.cdnEtags
+        if languageBeingFetched != language {
+            // Load etags from disk cache for the different language
+            let loadEtagsUseCase = LoadCdnEtagsUseCase(
+                language: languageBeingFetched,
+                namespaces: self.namespaces,
+                cdnURL: cdnURL.absoluteString,
+                cache: self.cache
+            )
+            cdnEtags = await Task.detached {
+                loadEtagsUseCase()
+            }.value
+        }
+
         let fetchUseCase = RemoteFetchUseCase(
             cdnURL: cdnURL,
             language: languageBeingFetched,
@@ -234,11 +248,13 @@ public final class Tolgee {
             logger: logger)
 
         do {
-            let response = try await fetchUseCase()
+            let response = try await Task.detached {
+                try await fetchUseCase()
+            }.value
 
             guard self.language == languageBeingFetched else {
                 logger.debug(
-                    "Language changed during fetch from \(languageBeingFetched) to \(language). Discarding fetched data."
+                    "Caching language \(languageBeingFetched) only to the disk"
                 )
                 return
             }
@@ -254,6 +270,11 @@ public final class Tolgee {
             }
 
             self.lastFetchDate = Date()
+
+            logger.debug(
+                "Successfully updated in-memory translations from CDN for language: \(languageBeingFetched)"
+            )
+
             self.onTranslationsUpdatedSubscribers.forEach {
                 $0.yield(())
             }

@@ -123,9 +123,9 @@ final class FileCache: CacheProtocol {
             return
         }
 
-        // Find and delete files that match the prefix but aren't the current file
+        // Find and delete files that match the prefix but aren't the current file and aren't etag file
         for file in files {
-            if file.hasPrefix(searchPrefix) && file != currentFilename {
+            if file.hasPrefix(searchPrefix) && file != currentFilename && !file.hasSuffix("_etag.txt") {
                 let fileURL = cdnCacheDirectory.appendingPathComponent(file)
                 try? FileManager.default.removeItem(at: fileURL)
             }

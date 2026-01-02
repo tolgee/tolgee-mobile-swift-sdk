@@ -284,4 +284,45 @@ struct FileCacheTests {
         // Data should still exist
         #expect(cache.loadRecords(for: descriptor) == testData)
     }
+
+    @Test func testFileCacheClearOldCacheDoesNotDeleteEtag() throws {
+        let cache = try createCleanFileCache()
+
+        // Create descriptors for old and current versions
+        let oldVersionDescriptor = CacheDescriptor(
+            language: "en", namespace: nil, appVersionSignature: "1.0.0", cdn: cdnURL)
+        let currentVersionDescriptor = CacheDescriptor(
+            language: "en", namespace: nil, appVersionSignature: "2.0.0", cdn: cdnURL)
+
+        // Create etag descriptor (etags don't have version)
+        let etagDescriptor = CdnEtagDescriptor(language: "en", namespace: nil, cdn: cdnURL)
+
+        let oldData = "old version data".data(using: .utf8)!
+        let currentData = "current version data".data(using: .utf8)!
+        let etag = "test-etag-abc"
+
+        // Save old and current version data
+        try cache.saveRecords(oldData, for: oldVersionDescriptor)
+        try cache.saveRecords(currentData, for: currentVersionDescriptor)
+
+        // Save etag
+        try cache.saveCdnEtag(etagDescriptor, etag: etag)
+
+        // Verify all data is saved
+        #expect(cache.loadRecords(for: oldVersionDescriptor) == oldData)
+        #expect(cache.loadRecords(for: currentVersionDescriptor) == currentData)
+        #expect(cache.loadCdnEtag(for: etagDescriptor) == etag)
+
+        // Clear old cache for current version
+        cache.clearOldCache(descriptor: currentVersionDescriptor)
+
+        // Old version should be deleted
+        #expect(cache.loadRecords(for: oldVersionDescriptor) == nil)
+
+        // Current version should still exist
+        #expect(cache.loadRecords(for: currentVersionDescriptor) == currentData)
+
+        // Etag should still exist
+        #expect(cache.loadCdnEtag(for: etagDescriptor) == etag)
+    }
 }
