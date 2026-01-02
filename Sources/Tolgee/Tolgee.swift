@@ -184,7 +184,7 @@ public final class Tolgee {
         }
 
         if customLocale != .current {
-            guard let customLocalLanguage = languages?.localLaunguage else {
+            guard let customLocalLanguage = languages?.localLanguage else {
                 logger.error(
                     "The provided locale \(customLocale.identifier) is not supported by the app localizations"
                 )
@@ -427,7 +427,6 @@ public final class Tolgee {
         lastFetchDate = nil
         translations.removeAll()
         cdnEtags.removeAll()
-        cdnEtags.removeAll()
         try cache.clearAll()
         logger.debug("Successfully cleared all cached translations and ETag data")
     }
@@ -486,7 +485,7 @@ public final class Tolgee {
                 self.customLocalLanguage = nil
             } else {
                 self.customLocale = locale
-                self.customLocalLanguage = languages.localLaunguage
+                self.customLocalLanguage = languages.localLanguage
             }
             didUpdateLocale = true
         }
@@ -603,7 +602,7 @@ public final class Tolgee {
     }
 
     private func resolveLanguages(from locale: Locale)
-        throws -> (localLaunguage: String, cdnLanguage: String)
+        throws -> (localLanguage: String, cdnLanguage: String)
     {
         if let localLanguage = resolveLanguage(for: locale, in: bundleForLanguageDetection),
             doesLocaleMatchLanguage(locale, language: localLanguage)
