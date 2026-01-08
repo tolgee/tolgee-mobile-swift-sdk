@@ -5,6 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "Tolgee",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v13),
         .iOS(.v16),
@@ -25,7 +26,10 @@ let package = Package(
         ),
         .testTarget(
             name: "TolgeeTests",
-            dependencies: ["Tolgee"]
+            dependencies: ["Tolgee"],
+            resources: [
+                .process("Resources")
+            ]
         ),
     ]
 )

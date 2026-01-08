@@ -15,7 +15,8 @@ final class TestContext {
     self.tolgee = Tolgee(
       urlSession: urlSession,
       cache: cache,
-      appVersionSignature: "1.0.0-1"
+      appVersionSignature: "1.0.0-1",
+      bundleForLanguageDetection: .module
     )
   }
 }
@@ -26,18 +27,18 @@ struct TolgeeTestsCs {
   // Czech test data with Apple-style complex plural forms
   let testTranslationsJSON = """
     {
-      "Hello, world!": "Ahoj, světe!",
+      "Hello, world!": "[remote] Ahoj, světe!",
       "I have %lld apples": {
         "variations": {
           "plural": {
-            "one": "Mám %lld jablko",
-            "few": "Mám %lld jablka",
-            "other": "Mám %lld jablek",
-            "many": "Mám %lld jablek"
+            "one": "[remote] Mám %lld jablko",
+            "few": "[remote] Mám %lld jablka",
+            "other": "[remote] Mám %lld jablek",
+            "many": "[remote] Mám %lld jablek"
           }
         }
       },
-      "My name is %@": "Jmenuji se %@",
+      "My name is %@": "[remote] Jmenuji se %@",
       "Redraw": "Překreslit"
     }
     """
@@ -48,93 +49,70 @@ struct TolgeeTestsCs {
 
     let context = TestContext()
     let tolgee = context.tolgee
-    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
+    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, locale: czechLocale)
+
+    #expect(tolgee.translate("Hello, world!", bundle: .module) == "[local] Ahoj, světe!")
 
     await context.urlSession.setMockResponse(
       for: URL(string: "https://cdn.example.com/cs.json")!,
       result: .success(Data(testTranslationsJSON.utf8)))
     await tolgee.remoteFetch()
 
-    if #available(macOS 15.4, *) {
-
-      // Test basic Czech translation without arguments
-      let greeting = tolgee.translate("Hello, world!", locale: czechLocale)
-      #expect(greeting == "Ahoj, světe!")
-
-    } else {
-      #expect(Bool(false))  // Skip this test on older versions
-    }
+    #expect(tolgee.translate("Hello, world!", bundle: .module) == "[remote] Ahoj, světe!")
   }
 
   @Test func testCzechSimplePlaceholderReplacement() async throws {
     let context = TestContext()
     let tolgee = context.tolgee
-    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
+    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, locale: czechLocale)
+
+    #expect(tolgee.translate("My name is %@", "Jan", bundle: .module) == "[local] Jmenuji se Jan")
+    #expect(
+      tolgee.translate("My name is %@", "Marie", bundle: .module) == "[local] Jmenuji se Marie")
 
     await context.urlSession.setMockResponse(
       for: URL(string: "https://cdn.example.com/cs.json")!,
       result: .success(Data(testTranslationsJSON.utf8)))
     await tolgee.remoteFetch()
 
-    if #available(macOS 15.4, *) {
-
-      // Test Czech name replacement
-      let nameTranslation = tolgee.translate("My name is %@", "Jan", locale: czechLocale)
-      #expect(nameTranslation == "Jmenuji se Jan")
-
-      let anotherName = tolgee.translate("My name is %@", "Marie", locale: czechLocale)
-      #expect(anotherName == "Jmenuji se Marie")
-
-    } else {
-      #expect(Bool(false))  // Skip this test on older versions
-    }
+    #expect(tolgee.translate("My name is %@", "Jan", bundle: .module) == "[remote] Jmenuji se Jan")
+    #expect(
+      tolgee.translate("My name is %@", "Marie", bundle: .module) == "[remote] Jmenuji se Marie")
   }
 
   @Test func testCzechPluralFormsWithHashReplacement() async throws {
     let context = TestContext()
     let tolgee = context.tolgee
-    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
+    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, locale: czechLocale)
+
+    #expect(tolgee.translate("I have %lld apples", 1, bundle: .module) == "[local] Mám 1 jablko")
+    #expect(tolgee.translate("I have %lld apples", 3, bundle: .module) == "[local] Mám 3 jablka")
+    #expect(tolgee.translate("I have %lld apples", 5, bundle: .module) == "[local] Mám 5 jablek")
+    #expect(tolgee.translate("I have %lld apples", 0, bundle: .module) == "[local] Mám 0 jablek")
 
     await context.urlSession.setMockResponse(
       for: URL(string: "https://cdn.example.com/cs.json")!,
       result: .success(Data(testTranslationsJSON.utf8)))
     await tolgee.remoteFetch()
 
-    if #available(macOS 15.4, *) {
-
-      // Test Czech singular form (1)
-      let oneApple = tolgee.translate("I have %lld apples", 1, locale: czechLocale)
-      #expect(oneApple == "Mám 1 jablko")
-
-      // Test Czech few form (2-4) - Now properly handled!
-      let fewApples = tolgee.translate("I have %lld apples", 3, locale: czechLocale)
-      #expect(fewApples == "Mám 3 jablka")
-
-      // Test Czech plural form (5+)
-      let manyApples = tolgee.translate("I have %lld apples", 5, locale: czechLocale)
-      #expect(manyApples == "Mám 5 jablek")
-
-      // Test zero (should use plural/other)
-      let zeroApples = tolgee.translate("I have %lld apples", 0, locale: czechLocale)
-      #expect(zeroApples == "Mám 0 jablek")
-
-    } else {
-      #expect(Bool(false))  // Skip this test on older versions
-    }
+    #expect(tolgee.translate("I have %lld apples", 1, bundle: .module) == "[remote] Mám 1 jablko")
+    #expect(tolgee.translate("I have %lld apples", 3, bundle: .module) == "[remote] Mám 3 jablka")
+    #expect(tolgee.translate("I have %lld apples", 5, bundle: .module) == "[remote] Mám 5 jablek")
+    #expect(tolgee.translate("I have %lld apples", 0, bundle: .module) == "[remote] Mám 0 jablek")
   }
 
   @Test func testCzechMissingTranslationFallback() async throws {
     let context = TestContext()
     let tolgee = context.tolgee
-    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, language: "cs")
+    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, locale: czechLocale)
+
+    #expect(tolgee.translate("nonexistent.key", bundle: .module) == "nonexistent.key")
 
     await context.urlSession.setMockResponse(
       for: URL(string: "https://cdn.example.com/cs.json")!,
       result: .success(Data(testTranslationsJSON.utf8)))
     await tolgee.remoteFetch()
 
-    // Test with a key that doesn't exist (should fallback to NSLocalizedString)
-    let missingKey = tolgee.translate("nonexistent.key")
-    #expect(missingKey == "nonexistent.key")
+    #expect(tolgee.translate("nonexistent.key", bundle: .module) == "nonexistent.key")
   }
 }

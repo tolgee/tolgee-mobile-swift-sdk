@@ -99,7 +99,8 @@ Refer to our SwiftUI and UIKit examples for a complete setup.
 // Initialize with specific language and namespaces
 Tolgee.shared.initialize(
     cdn: URL(string: "https://cdn.tolgee.io/your-project-id")!,
-    language: "es", // Force Spanish instead of auto-detection
+    locale: Locale(identifier: "pt_BR"), // Override the system locale
+    language: "pt-BR", // Override the language name on Tolgee CDN
     namespaces: ["buttons", "errors", "onboarding"], // Organize translations
     enableDebugLogs: true // Enable detailed logging for development
 )
@@ -130,7 +131,7 @@ let nameAndAge = Tolgee.shared.translate("My name is %@ and I'm %lld years old",
 
 Tolgee works great with SwiftUI, including previewing views in different localizations using SwiftUI previews.
 
-You can use the `TolgeeText` component which will automatically use the injected locale on iOS 18.4+
+You can use the `TolgeeText` component which will automatically use the injected locale
 ```swift
 import SwiftUI
 import Tolgee
@@ -152,18 +153,14 @@ struct ContentView: View {
 }
 ```
 
-or use a version of the `translate` method that accepts `locale` param on iOS 18.4 and newer. The older implementation will fall back to the system language.
+or use a version of the `translate` method that accepts `locale` param.
 
 ```swift
 struct ContentView: View {
     @Environment(\.locale) var locale
     
     var body: some View {
-        if #available(iOS 18.4, *) {
-            Text(Tolgee.shared.translate("welcome_title", locale: locale))
-        } else {
-            Text(Tolgee.shared.translate("welcome_title"))
-        }
+        Text(Tolgee.shared.translate("welcome_title", locale: locale))
     }
 }
 
@@ -178,6 +175,9 @@ struct ContentView: View {
 }
 ```
 
+> [!NOTE]
+> The `locale` parameter in `translate(...)` methods is primarily intended for SwiftUI previews. When set to a non-current locale, translations from the CDN will be ignored and only bundle localizations will be used. If a custom locale is set on the SDK level via `initialize(...)` or `setCustomLocale(...)`, it will take precedence and the locale parameter will be ignored.
+
 ### Reactive Updates
 
 Tolgee provides a hook to allow the consumer of the SDK to be notified about when the translation cache has been updated.
@@ -190,7 +190,7 @@ Task {
 }
 ```
 
-When using SwiftUI, Tolgee offers a convenience utility that automatically triggers a redraw of a view when the translations cache has been updated.
+When using SwiftUI, `TolgeeText` will automatically update. Tolgee additionally offers a convenience utility that automatically triggers a redraw of a view when the translations cache has been updated.
 
 ```swift
 struct ContentView: View {
@@ -220,6 +220,70 @@ NSLocalizedString("welcome_message", comment: "")
 > Plural strings are currently not supported and will fall back to using the string bundled with the app.
 
 ## 🌐 Advanced Features
+
+### Language Overwrite
+
+You can override the default system language to display translations in a specific language. This is useful when implementing custom language switchers or when you want to force a specific language regardless of the device settings.
+
+#### Setting Language During Initialization
+
+You can set a custom language when initializing Tolgee:
+
+```swift
+// Override both locale and language
+Tolgee.shared.initialize(
+    cdn: cdnURL,
+    locale: Locale(identifier: "pt_BR"), // Override the system locale
+    language: "pt-BR" // Override the language name on Tolgee CDN
+)
+
+// Or just override the locale (language is extracted automatically)
+Tolgee.shared.initialize(
+    cdn: cdnURL,
+    locale: Locale(identifier: "pt_BR")
+)
+```
+
+#### Changing Language at Runtime
+
+Use `setCustomLocale(_:language:)` to change the language dynamically:
+
+```swift
+// Set custom locale (language is extracted automatically)
+try Tolgee.shared.setCustomLocale(Locale(identifier: "fr"))
+
+// Or specify a custom language for the CDN if it differs from the locale
+try Tolgee.shared.setCustomLocale(
+    Locale(identifier: "pt_BR"),
+    language: "pt-BR" // CDN language code
+)
+
+// Fetch translations for the new language
+await Tolgee.shared.remoteFetch()
+```
+
+#### Resetting to System Language
+
+To return to the device's system language:
+
+```swift
+try Tolgee.shared.setCustomLocale(.current)
+await Tolgee.shared.remoteFetch()
+```
+
+#### Pre-fetching all available languages from the CDN
+
+You can pre-fetch all languages supported by your app:
+
+```swift
+await withTaskGroup(of: Void.self) { group in
+    for language in Bundle.main.localizations {
+        group.addTask {
+            await Tolgee.shared.remoteFetch(language: language)
+        }
+    }
+}
+```
 
 ### Custom Tables/Namespaces
 Tolgee iOS SDK supports loading of local translations from multiple local tables by providing the `table` parameter. When using `.xcstrings` files, the names of the tables match the names of your files without the extension. You do not need to provide the table name when loading strings stored in the default `Localizable.xcstrings` file.
@@ -275,7 +339,7 @@ for await logMessage in Tolgee.shared.onLogMessage() {
 ## ⚙️ Requirements
 
 - **Swift:** 6.0+
-- **Xcode:** 16.3+
+- **Xcode:** 16.0+
 
 ## 🧵 Thread-safety
 

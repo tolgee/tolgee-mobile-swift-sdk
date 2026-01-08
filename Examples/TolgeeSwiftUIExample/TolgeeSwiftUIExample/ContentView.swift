@@ -17,18 +17,32 @@ struct ContentView: View {
     @Environment(\.locale) var locale
     
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
+            
+            HStack {
+                TolgeeText("Language switcher:")
+                LanguagePicker(onLanguageChange: { language in
+                    Task {
+                        if let language {
+                            try Tolgee.shared.setCustomLocale(Locale(identifier: language))
+                        } else {
+                            try Tolgee.shared.setCustomLocale(.current)
+                        }
+                        
+                        await Tolgee.shared.remoteFetch()
+                    }
+                })
+                .pickerStyle(.menu)
+            }
+            
+            Divider()
             
             // Use TolgeeText instead of Text for convenience
             TolgeeText("My name is %@ and I have %lld apples", "John", 3)
             
             // Use the SDK directly
             // note: the locale param is only used for SwiftUI preview purposes
-            if #available(iOS 18.4, *) {
-                Text(Tolgee.shared.translate("My name is %@ and I have %lld apples", "John", 3, locale: locale))
-            } else {
-                Text(Tolgee.shared.translate("My name is %@ and I have %lld apples", "John", 3))
-            }
+            Text(Tolgee.shared.translate("My name is %@ and I have %lld apples", "John", 3, locale: locale))
         }
         .padding()
     }

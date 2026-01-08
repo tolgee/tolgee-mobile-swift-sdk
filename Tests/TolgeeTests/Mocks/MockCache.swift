@@ -29,6 +29,21 @@ final class MockCache: CacheProtocol, Sendable {
         etagStorage.withLock { $0[descriptor] = etag }
     }
 
+    func clearOldCache(descriptor: CacheDescriptor) {
+        // Mock implementation: remove entries that match language, namespace, and cdn
+        // but have different appVersionSignature
+        storage.withLock { cache in
+            let keysToRemove = cache.keys.filter { key in
+                key.language == descriptor.language && key.namespace == descriptor.namespace
+                    && key.cdn == descriptor.cdn
+                    && key.appVersionSignature != descriptor.appVersionSignature
+            }
+            for key in keysToRemove {
+                cache.removeValue(forKey: key)
+            }
+        }
+    }
+
     /// Helper method to pre-populate cache for testing
     func preload(_ data: Data, for descriptor: CacheDescriptor) {
         storage.withLock { $0[descriptor] = data }
