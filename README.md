@@ -331,9 +331,9 @@ for await logMessage in Tolgee.shared.onLogMessage() {
 
 | Platform | Minimum Version | 
 |----------|----------------|
-| iOS      | 16.0+          |
-| macOS    | 13.0+          |
-| tvOS     | 16.0+          |
+| iOS      | 13.0+          |
+| macOS    | 10.15+         |
+| tvOS     | 13.0+          |
 | watchOS  | 6.0+           |
 
 ## ⚙️ Requirements
