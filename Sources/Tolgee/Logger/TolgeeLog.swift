@@ -2,7 +2,7 @@ import OSLog
 
 @MainActor
 final class TolgeeLog {
-    private let logger = Logger(subsystem: "com.tolgee.sdk", category: "tolgee")
+    private let logger = OSLog(subsystem: "com.tolgee.sdk", category: "tolgee")
     private var onLogMessageSubscribers = [ContinuationWrapper<LogMessage>]()
 
     var enableDebugLogs: Bool = false
@@ -33,7 +33,7 @@ final class TolgeeLog {
         }
 
         // Log to system logger
-        logger.log(level: level, "Tolgee: \(message)")
+        os_log("Tolgee: %@", log: logger, type: level, message)
     }
 
     func debug(_ message: String) {
@@ -44,7 +44,6 @@ final class TolgeeLog {
 
     func error(_ message: String) {
         log(.error, message: message)
-        logger.error("Tolgee: \(message)")
     }
 
     func info(_ message: String) {

@@ -134,7 +134,7 @@ final class RemoteFetchUseCase: Sendable {
                     returnResponse.cdnEtags[table] = etag
                 } else {
                     await self.logger.info(
-                        "No etag header found for \(cdnURL.appending(component: filePath))")
+                        "No etag header found for \(cdnURL.appendingPathComponent(filePath))")
                 }
 
                 await logger.debug(
