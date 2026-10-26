@@ -13,7 +13,7 @@ public struct PluralRules {
     private let languageCode: String
 
     init(for locale: Locale) {
-        self.languageCode = locale.language.languageCode?.identifier ?? "en"
+        self.languageCode = locale.languageCode ?? "en"
     }
 
     public func category(for number: Double) -> PluralCategory {
