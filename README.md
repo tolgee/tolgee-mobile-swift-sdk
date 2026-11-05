@@ -127,6 +127,26 @@ let nameAndAge = Tolgee.shared.translate("My name is %@ and I'm %lld years old",
 > [!NOTE]
 > Strings with multiple pluralized parameters are currently **not supported**, for example `Tolgee.shared.translate("I have %lld apples and %lld oranges", 2, 3)`
 
+### Typed Keys
+
+Add the `TolgeeKeysPlugin` build plugin to your target (in Xcode: target → Build Phases → Run Build Tool Plug-ins). It generates a member for every key in your String Catalogs, so a typo in a key name or a wrong or missing argument fails the build.
+
+```swift
+TolgeeText(.welcomeTitle)
+TolgeeText(.welcomeUser("John"))
+let itemCount = Tolgee.shared.translate(.itemsCount(5))
+```
+
+Keys from other tables than `Localizable` (for example Tolgee namespaces) are nested under the table name, so the same key can exist in more tables:
+
+```swift
+TolgeeText(.Payments.confirm)
+```
+
+Parameter types come from the format specifiers of all texts of the key (every language, plural form and device variation): `%@` is `String`, `%lld` is `Int`, `%d` is `Int32`, `%f` is `Double`. Key names are converted to camel case (`home.send_money` becomes `homeSendMoney`). Each key remembers the bundle of its String Catalog, so keys from a Swift package or framework work without passing `bundle:`. Typed keys behave exactly like string keys, including plurals and over-the-air updates.
+
+Keys that can't get a safe member are skipped, with a build warning that names the key and the reason. For example two keys that would get the same name, or a `%s` specifier. String keys keep working for them. `InfoPlist.xcstrings` and `AppShortcuts.xcstrings` are not processed.
+
 ### 🔧 SwiftUI Integration
 
 Tolgee works great with SwiftUI, including previewing views in different localizations using SwiftUI previews.

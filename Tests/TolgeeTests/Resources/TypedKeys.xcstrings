@@ -1,0 +1,29 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "typed.days_left" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld day left" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld days left" } }
+            }
+          }
+        }
+      }
+    },
+    "typed.greeting" : {
+      "comment" : "Greeting\r\nwith a CRLF comment",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hello, %@" } }
+      }
+    },
+    "Line one\nLine\ttwo" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Line one\nLine\ttwo" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

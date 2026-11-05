@@ -166,4 +166,46 @@ struct TolgeeTestsEn {
       tolgee.translate("hello_world", table: "namespace", bundle: .module)
         == "[remote] Hello, world from custom namespace!")
   }
+
+  @Test func testTranslateTolgeeKey() async throws {
+    let context = TestContext()
+    let tolgee = context.tolgee
+    tolgee.initialize(
+      cdn: URL(string: "https://cdn.example.com")!, locale: englishLocale,
+      namespaces: ["namespace"])
+
+    let name = TolgeeKey("My name is %@", arguments: ["John"], bundle: .module)
+    let apples = TolgeeKey("I have %lld apples", arguments: [5], bundle: .module)
+    let namespaced = TolgeeKey("hello_world", table: "namespace", bundle: .module)
+
+    #expect(tolgee.translate(name) == "[local] My name is John")
+    #expect(tolgee.translate(apples) == "[local] I have 5 apples")
+    #expect(
+      tolgee.translate(namespaced)
+        == "[local] Hello, world from custom namespace!")
+
+    await context.urlSession.setMockResponse(
+      for: URL(string: "https://cdn.example.com/en.json")!,
+      result: .success(Data(testTranslationsJSON.utf8)))
+    await context.urlSession.setMockResponse(
+      for: URL(string: "https://cdn.example.com/namespace/en.json")!,
+      result: .success(Data(testTranslationsJSONCustomNamespace.utf8)))
+    await tolgee.remoteFetch()
+
+    #expect(tolgee.translate(name) == "[remote] My name is John")
+    #expect(tolgee.translate(apples) == "[remote] I have 5 apples")
+    #expect(
+      tolgee.translate(namespaced)
+        == "[remote] Hello, world from custom namespace!")
+  }
+
+  @Test(.disabled()) func testGeneratedTypedKeysOFF() throws {
+    let tolgee = TestContext().tolgee
+    tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, locale: englishLocale)
+
+    #expect(tolgee.translate(.TypedKeys.typedGreeting("Jana")) == "Hello, Jana")
+    #expect(tolgee.translate(.TypedKeys.typedDaysLeft(1)) == "1 day left")
+    #expect(tolgee.translate(.TypedKeys.typedDaysLeft(3)) == "3 days left")
+    #expect(tolgee.translate(.TypedKeys.lineOneLineTwo) == "Line one\nLine\ttwo")
+  }
 }
