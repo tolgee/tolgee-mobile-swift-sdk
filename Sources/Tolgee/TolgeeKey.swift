@@ -8,6 +8,9 @@ import Foundation
 /// TolgeeText(.homeGreeting("Jana"))
 /// let title = Tolgee.shared.translate(.homeTitle)
 /// ```
+///
+/// `TolgeeKey` is not `Equatable` or `Hashable`: `arguments` holds values of any `CVarArg` type, which
+/// can't be compared in a clean way. Compare `key` and `table` if you need to tell keys apart.
 public struct TolgeeKey: Sendable {
     public let key: String
     public let table: String?

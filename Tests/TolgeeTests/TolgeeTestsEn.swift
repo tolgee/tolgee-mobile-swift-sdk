@@ -199,7 +199,7 @@ struct TolgeeTestsEn {
         == "[remote] Hello, world from custom namespace!")
   }
 
-  @Test(.disabled()) func testGeneratedTypedKeysOFF() throws {
+  @Test func testGeneratedTypedKeys() throws {
     let tolgee = TestContext().tolgee
     tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, locale: englishLocale)
 
