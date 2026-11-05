@@ -159,6 +159,13 @@ struct TolgeeKeysGeneratorTests {
     #expect(identifier(for: "3d_secure") == "_3dSecure")
   }
 
+  @Test func apostrophesJoinWords() throws {
+    #expect(identifier(for: "Don't stop") == "dontStop")
+    #expect(identifier(for: "What\u{2019}s new") == "whatsNew")
+    #expect(identifier(for: "it's %lld o'clock") == "itsOclock")
+    #expect(identifier(for: "'quoted'") == "quoted")
+  }
+
   @Test func collidingNamesAreAllSkipped() throws {
     let result = try generate(strings: #""home.title" : {}, "home_title" : {}, "other" : {}"#)
     #expect(!result.code.contains("homeTitle"))
