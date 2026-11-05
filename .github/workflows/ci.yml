@@ -17,10 +17,27 @@ jobs:
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: '16.3'
+        # 16.4 is the image default, so its iOS 18.5 simulator runtime is the
+        # one every runner VM carries. Keep this on 16.x: Xcode 26 and later
+        # refuse deployment targets below iOS 15, so the iOS 13 build below
+        # would stop checking anything.
+        xcode-version: '16.4'
           
     - name: Build
       run: swift build
+
+    # xcodebuild only offers the generic iOS Simulator destination when the
+    # iOS platform matching the selected Xcode is installed, and some runner VMs
+    # lack it (they carry runtimes for other Xcode versions only). Ask xcodebuild
+    # itself, and install the matching platform when it has no such destination.
+    - name: Ensure the selected Xcode has an iOS Simulator destination
+      run: |
+        xcrun simctl list runtimes
+        if ! xcodebuild -showdestinations -scheme Tolgee 2>/dev/null | grep -q 'platform:iOS Simulator'; then
+          echo "No iOS Simulator destination for this Xcode, downloading its iOS platform"
+          xcodebuild -downloadPlatform iOS
+          xcodebuild -showdestinations -scheme Tolgee | grep 'platform:iOS Simulator' | head -3
+        fi
 
     # Compiles the sources against the package's iOS deployment target, so an
     # API that needs a newer iOS fails here instead of in a consuming app.
