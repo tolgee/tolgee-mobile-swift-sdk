@@ -128,11 +128,18 @@ struct TolgeeKeysGeneratorTests {
     #expect(result.code.contains("static func `fee`(_ arg1: String) -> TolgeeKey {"))
   }
 
-  @Test func integerTypesFollowTheLengthModifier() throws {
-    let result = try generate(strings: #""sizes" : \#(text("%d %lld %u %lu %ld"))"#)
+  @Test func integerTypesIgnoreTheLengthModifier() throws {
+    let result = try generate(strings: #""sizes" : \#(text("%d %lld %u %lu %ld %i"))"#)
     #expect(
       result.code.contains(
-        "static func `sizes`(_ arg1: Int32, _ arg2: Int, _ arg3: UInt32, _ arg4: UInt, _ arg5: Int) -> TolgeeKey {"))
+        "static func `sizes`(_ arg1: Int, _ arg2: Int, _ arg3: UInt, _ arg4: UInt, _ arg5: Int, _ arg6: Int) -> TolgeeKey {"))
+  }
+
+  @Test func differentIntegerLengthsAcrossLanguagesAreOneKey() throws {
+    let result = try generate(
+      strings: #""count" : { "localizations" : { "en" : \#(unit("%lld items")), "cs" : \#(unit("%d položek")) } }"#)
+    #expect(result.code.contains("static func `count`(_ arg1: Int) -> TolgeeKey {"))
+    #expect(result.warnings.isEmpty)
   }
 
   @Test func unsafeSpecifiersSkipTheKey() throws {
@@ -150,6 +157,13 @@ struct TolgeeKeysGeneratorTests {
     #expect(identifier(for: "%lld items") == "items")
     #expect(identifier(for: "Price: %.2f") == "price")
     #expect(identifier(for: "3d_secure") == "_3dSecure")
+  }
+
+  @Test func apostrophesJoinWords() throws {
+    #expect(identifier(for: "Don't stop") == "dontStop")
+    #expect(identifier(for: "What\u{2019}s new") == "whatsNew")
+    #expect(identifier(for: "it's %lld o'clock") == "itsOclock")
+    #expect(identifier(for: "'quoted'") == "quoted")
   }
 
   @Test func collidingNamesAreAllSkipped() throws {

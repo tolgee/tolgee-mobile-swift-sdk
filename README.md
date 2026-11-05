@@ -129,7 +129,17 @@ let nameAndAge = Tolgee.shared.translate("My name is %@ and I'm %lld years old",
 
 ### Typed Keys
 
-Add the `TolgeeKeysPlugin` build plugin to your target (in Xcode: target → Build Phases → Run Build Tool Plug-ins). It generates a member for every key in your String Catalogs, so a typo in a key name or a wrong or missing argument fails the build.
+Add the `TolgeeKeysPlugin` build plugin to your target. In Xcode: target → Build Phases → Run Build Tool Plug-ins. In a Swift package:
+
+```swift
+.target(
+    name: "MyFeature",
+    dependencies: [.product(name: "Tolgee", package: "tolgee-mobile-swift-sdk")],
+    plugins: [.plugin(name: "TolgeeKeysPlugin", package: "tolgee-mobile-swift-sdk")]
+)
+```
+
+It generates a member for every key in your String Catalogs, so a typo in a key name or a wrong or missing argument fails the build.
 
 ```swift
 TolgeeText(.welcomeTitle)
@@ -143,9 +153,15 @@ Keys from other tables than `Localizable` (for example Tolgee namespaces) are ne
 TolgeeText(.Payments.confirm)
 ```
 
-Parameter types come from the format specifiers of all texts of the key (every language, plural form and device variation): `%@` is `String`, `%lld` is `Int`, `%d` is `Int32`, `%f` is `Double`. Key names are converted to camel case (`home.send_money` becomes `homeSendMoney`). Each key remembers the bundle of its String Catalog, so keys from a Swift package or framework work without passing `bundle:`. Typed keys behave exactly like string keys, including plurals and over-the-air updates.
+Parameter types come from the format specifiers of all texts of the key (every language, plural form and device variation): `%@` is `String`, `%d` and `%lld` are `Int`, `%u` and `%lu` are `UInt`, `%f` is `Double`. Key names are converted to camel case (`home.send_money` becomes `homeSendMoney`). Each key remembers the bundle of its String Catalog, so keys from a Swift package or framework work without passing `bundle:`. Typed keys behave exactly like string keys, including plurals and over-the-air updates.
 
 Keys that can't get a safe member are skipped, with a build warning that names the key and the reason. For example two keys that would get the same name, or a `%s` specifier. String keys keep working for them. `InfoPlist.xcstrings` and `AppShortcuts.xcstrings` are not processed.
+
+> [!NOTE]
+> Keys with more than one pluralized argument (Xcode's `%#@name@` substitutions) get a typed member too, but the CDN can only deliver a single plural per key, so those keys are always served from the app bundle.
+
+> [!IMPORTANT]
+> `translate(_:)` and `TolgeeText(_:)` now accept a `TolgeeKey` as well as a `String`. If your app declares its own `static let` String constants for keys and calls them with implicit member syntax, such as `translate(.homeTitle)`, a generated key with the same name makes that call ambiguous or resolves it to the typed key. Write the type out (`translate(String.homeTitle)`) or drop the constants in favour of the generated keys.
 
 ### 🔧 SwiftUI Integration
 

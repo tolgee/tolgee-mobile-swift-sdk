@@ -174,10 +174,14 @@ private func texts(
     return result
 }
 
-/// `home.send_money` → `homeSendMoney`, `HOME_TITLE` → `homeTitle`, `My name is %@` → `myNameIs`.
+/// `home.send_money` → `homeSendMoney`, `HOME_TITLE` → `homeTitle`, `My name is %@` → `myNameIs`,
+/// `Don't stop` → `dontStop`.
 func identifier(for key: String) -> String {
-    let text = specifier.stringByReplacingMatches(
+    var text = specifier.stringByReplacingMatches(
         in: key, range: NSRange(key.startIndex..., in: key), withTemplate: " ")
+    // Apostrophes join the letters around them instead of splitting a word, so contractions in
+    // sentence keys read naturally: `What's new` → `whatsNew`, not `whatSNew`.
+    text.removeAll(where: { $0 == "'" || $0 == "\u{2019}" })
     let words = text.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
     guard let first = words.first else { return "" }
     let name = lowercasingStart(of: first)
@@ -244,15 +248,17 @@ private func parameters(
     return types
 }
 
+/// Integer specifiers map to `Int` / `UInt` whatever their length modifier. `%d` is very common in
+/// catalogs migrated from `.strings`, and `Int32` would force `Int32(count)` at every call site and
+/// make a key unusable as soon as one language writes `%d` where another writes `%lld`. On Apple's
+/// 64-bit platforms `String(format:)` reads the low 32 bits of an `Int` for `%d`, which is exactly
+/// what string keys do today.
 private func swiftType(conversion: String, length: String) throws -> String {
-    let long = ["l", "ll", "q", "z", "t", "j"].contains(length)
     switch conversion {
     case "@": return "String"
     case "f", "F", "e", "E", "g", "G", "a", "A": return "Double"
-    case "d", "i": return long ? "Int" : "Int32"
-    case "D": return "Int"
-    case "u", "x", "X", "o": return long ? "UInt" : "UInt32"
-    case "U", "O": return "UInt"
+    case "d", "i", "D": return "Int"
+    case "u", "x", "X", "o", "U", "O": return "UInt"
     case "c": return "Int32"
     case "C": return "UInt16"
     default: throw UnsupportedKey(reason: "%\(conversion) can't be passed safely from Swift, use %@ instead")
