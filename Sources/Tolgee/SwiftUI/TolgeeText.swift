@@ -1,5 +1,5 @@
 //
-//  TolgeeTest.swift
+//  TolgeeText.swift
 //  Tolgee
 //
 //  Created by Petr Pavlik on 23.07.2025.
@@ -15,7 +15,9 @@ public struct TolgeeText: View {
     private let arguments: [CVarArg]
     private let bundle: Bundle
     @Environment(\.locale) private var locale
-    @StateObject private var updater = TolgeeSwiftUIUpdater()
+    // Every TolgeeText watches the same Tolgee.shared singleton, so one shared
+    // updater (and one subscription task) is enough for all of them.
+    @ObservedObject private var updater = TolgeeSwiftUIUpdater.shared
 
     public init(
         _ key: String, _ arguments: CVarArg..., tableName: String? = nil, bundle: Bundle = .main

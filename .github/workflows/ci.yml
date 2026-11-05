@@ -21,7 +21,14 @@ jobs:
           
     - name: Build
       run: swift build
-      
+
+    # Compiles the sources against the package's iOS deployment target, so an
+    # API that needs a newer iOS fails here instead of in a consuming app.
+    # (tvOS and watchOS are not checked: the runner image has no simulator
+    # runtimes for them, so xcodebuild cannot resolve those destinations.)
+    - name: Build for iOS Simulator
+      run: xcodebuild build -scheme Tolgee -destination 'generic/platform=iOS Simulator' -quiet
+
     - name: Run tests with coverage
       run: |
         swift test --no-parallel --enable-code-coverage
