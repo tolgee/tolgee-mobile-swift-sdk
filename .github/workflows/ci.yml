@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, ios-13 ]
+    tags: [ '*-ios13.*' ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, ios-13 ]
 
 jobs:
   test:
@@ -49,3 +50,18 @@ jobs:
     - name: Run tests with coverage
       run: |
         swift test --no-parallel --enable-code-coverage
+
+  # Swift Package Manager installs versions straight from git tags, so the tag
+  # push itself is the release, even when the tests fail. Delete the tag if
+  # this job does not run.
+  release:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Create GitHub pre-release
+      run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --generate-notes
+      env:
+        GH_TOKEN: ${{ github.token }}
