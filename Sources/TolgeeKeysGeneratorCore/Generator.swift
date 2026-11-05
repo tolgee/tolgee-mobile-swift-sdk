@@ -174,10 +174,14 @@ private func texts(
     return result
 }
 
-/// `home.send_money` → `homeSendMoney`, `HOME_TITLE` → `homeTitle`, `My name is %@` → `myNameIs`.
+/// `home.send_money` → `homeSendMoney`, `HOME_TITLE` → `homeTitle`, `My name is %@` → `myNameIs`,
+/// `Don't stop` → `dontStop`.
 func identifier(for key: String) -> String {
-    let text = specifier.stringByReplacingMatches(
+    var text = specifier.stringByReplacingMatches(
         in: key, range: NSRange(key.startIndex..., in: key), withTemplate: " ")
+    // Apostrophes join the letters around them instead of splitting a word, so contractions in
+    // sentence keys read naturally: `What's new` → `whatsNew`, not `whatSNew`.
+    text.removeAll(where: { $0 == "'" || $0 == "\u{2019}" })
     let words = text.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
     guard let first = words.first else { return "" }
     let name = lowercasingStart(of: first)
