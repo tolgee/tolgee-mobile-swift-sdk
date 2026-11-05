@@ -44,7 +44,6 @@ final class TolgeeLog {
 
     func error(_ message: String) {
         log(.error, message: message)
-        logger.error("Tolgee: \(message)")
     }
 
     func info(_ message: String) {

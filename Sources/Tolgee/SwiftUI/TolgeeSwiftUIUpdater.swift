@@ -22,6 +22,10 @@ import Combine
 @MainActor
 public final class TolgeeSwiftUIUpdater: ObservableObject {
 
+    /// Shared instance used by ``TolgeeText``. One subscription to translation updates
+    /// is enough for all views that observe it.
+    static let shared = TolgeeSwiftUIUpdater()
+
     private var task: Task<Void, Never>? = nil
 
     public init() {
