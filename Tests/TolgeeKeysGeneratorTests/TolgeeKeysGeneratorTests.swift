@@ -204,11 +204,55 @@ struct TolgeeKeysGeneratorTests {
     #expect(identifier(for: "'quoted'") == "quoted")
   }
 
-  @Test func collidingNamesAreAllSkipped() throws {
-    let result = try generate(strings: #""home.title" : {}, "home_title" : {}, "other" : {}"#)
-    #expect(!result.code.contains("homeTitle"))
-    #expect(result.code.contains("`other`"))
-    #expect(result.warnings.count == 1)
+  @Test func collidingNamesStopGeneration() throws {
+    #expect(
+      problems(#""home.title" : {}, "home_title" : {}, "other" : {}"#) == [
+        "Keys \"home.title\", \"home_title\" would all generate `homeTitle`. Rename all but one of them, or "
+          + "set \"generatesSymbol\" : false on the ones that need no member."
+      ])
+  }
+
+  @Test func keysWithoutLettersOrDigitsStopGeneration() throws {
+    #expect(
+      problems(#""!!!" : {}, "ok" : {}"#) == [
+        "Key \"!!!\" has no letters or digits to name a member by. Rename it, or set \"generatesSymbol\" : false on it in the catalog."
+      ])
+  }
+
+  @Test func everyProblemIsReportedInOneRun() throws {
+    let problems = problems(#""!!!" : {}, "home.title" : {}, "home_title" : {}, "key" : {}"#) ?? []
+    #expect(problems.count == 3)
+    #expect(problems.contains { $0.hasPrefix("Key \"!!!\"") })
+    #expect(problems.contains { $0.hasPrefix("Key \"key\"") })
+    #expect(problems.contains { $0.hasPrefix("Keys \"home.title\", \"home_title\"") })
+  }
+
+  @Test func generatesSymbolFalseExcludesTheKey() throws {
+    let result = try generate(
+      strings: #"""
+        "home.title" : { "generatesSymbol" : false },
+        "home_title" : {},
+        "!!!" : { "generatesSymbol" : false },
+        "c_string" : { "generatesSymbol" : false, "localizations" : { "en" : \#(unit("Hi %s")) } },
+        "kept" : { "generatesSymbol" : true }
+        """#)
+    #expect(result.code.contains("/// Key \"home_title\"\n    static var `homeTitle`: TolgeeKey {"))
+    #expect(!result.code.contains("home.title"))
+    #expect(!result.code.contains("cString"))
+    #expect(result.code.contains("`kept`"))
+    #expect(result.warnings.isEmpty)
+  }
+
+  /// The problems a catalog stops generation with, or nil when it generates.
+  func problems(_ strings: String) -> [String]? {
+    do {
+      _ = try generate(strings: strings)
+      return nil
+    } catch let error as GeneratorError {
+      return error.problems
+    } catch {
+      return nil
+    }
   }
 
   @Test func sameNameWithDifferentParametersIsAnOverload() throws {
@@ -218,10 +262,13 @@ struct TolgeeKeysGeneratorTests {
     #expect(result.warnings.isEmpty)
   }
 
-  @Test func namesOfTolgeeKeyPropertiesAreSkipped() throws {
-    let result = try generate(strings: #""Key" : {}, "table" : {}, "arguments" : {}, "bundle" : {}"#)
-    #expect(!result.code.contains("static"))
-    #expect(result.warnings.count == 4)
+  @Test func namesOfTolgeeKeyPropertiesStopGeneration() throws {
+    let problems = problems(#""Key" : {}, "table" : {}, "arguments" : {}, "bundle" : {}"#) ?? []
+    #expect(problems.count == 4)
+    #expect(
+      problems.contains(
+        "Key \"Key\" would generate `key`, which TolgeeKey already has. Rename it, or set \"generatesSymbol\" : false on it in the catalog."
+      ))
   }
 
   @Test func keysAndCommentsAreEscaped() throws {
