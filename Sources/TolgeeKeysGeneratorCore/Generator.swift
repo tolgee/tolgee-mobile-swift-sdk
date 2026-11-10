@@ -1,7 +1,15 @@
 import Foundation
 
+/// Problems that stop generation, one per line. They are all collected before the error is thrown, so a tool can
+/// show every one of them in one run, the way Xcode's own symbol generator does.
 public struct GeneratorError: Error, CustomStringConvertible {
-    public let description: String
+    public let problems: [String]
+
+    public init(_ problems: [String]) {
+        self.problems = problems
+    }
+
+    public var description: String { problems.joined(separator: "\n") }
 }
 
 public struct GeneratedKeys {
@@ -20,6 +28,9 @@ private struct Catalog: Decodable {
     struct Entry: Decodable {
         let comment: String?
         let localizations: [String: Localization]?
+        /// Xcode's per-string opt-out of symbol generation (`"generatesSymbol" : false`). The same switch
+        /// excludes the key here, so one edit in the catalog editor settles a key for both generators.
+        let generatesSymbol: Bool?
     }
 
     struct Localization: Decodable {
@@ -55,24 +66,36 @@ private struct UnservableKey: Error {
 
 private let reservedNames: Set = ["key", "table", "arguments", "bundle"]
 
+private let optOut = "set \"generatesSymbol\" : false on it in the catalog"
+
 /// Generates a `TolgeeKey` member for every key in a String Catalog.
 ///
 /// Parameter types come from the format specifiers of all texts of the key (every language, plural form and
-/// device variation). A key without any localization uses the key as its text. Keys that can't get a safe member
-/// are skipped and reported in `warnings`. Keys the CDN can't serve, those with more than one plural argument, are
-/// skipped and reported in `notes`, and listed in a comment at the end of the generated code.
+/// device variation). A key without any localization uses the key as its text.
+///
+/// Generation fails where Xcode's own symbol generator fails: a key that can't be named at all, or keys that would
+/// all get the same member. Every such key is collected and thrown together in one `GeneratorError`, so one run
+/// shows them all. A key with `"generatesSymbol" : false` is excluded, silently, as Xcode excludes it. Keys that
+/// can't get a safe member because of their format specifiers are skipped and reported in `warnings`. Keys the CDN
+/// can't serve, those with more than one plural argument, are skipped and reported in `notes`, and listed in a
+/// comment at the end of the generated code.
 public func generateKeys(catalog data: Data, table: String) throws -> GeneratedKeys {
     let catalog = try JSONDecoder().decode(Catalog.self, from: data)
     let nested = table != "Localizable"
     let indent = nested ? "        " : "    "
+    var errors: [String] = []
     var warnings: [String] = []
     var notes: [String] = []
     var members: [(key: String, name: String, types: [String], code: String)] = []
 
-    for (key, entry) in catalog.strings.sorted(by: { $0.key < $1.key }) {
+    for (key, entry) in catalog.strings.sorted(by: { $0.key < $1.key }) where entry.generatesSymbol != false {
         let name = identifier(for: key)
-        guard !name.isEmpty, !reservedNames.contains(name) else {
-            warnings.append("Key \(literal(key)) skipped: it can't be turned into a member name.")
+        guard !name.isEmpty else {
+            errors.append("Key \(literal(key)) has no letters or digits to name a member by. Rename it, or \(optOut).")
+            continue
+        }
+        guard !reservedNames.contains(name) else {
+            errors.append("Key \(literal(key)) would generate `\(name)`, which TolgeeKey already has. Rename it, or \(optOut).")
             continue
         }
         let types: [String]
@@ -114,18 +137,18 @@ public func generateKeys(catalog data: Data, table: String) throws -> GeneratedK
     let overloads = Dictionary(grouping: members) { "\($0.name)(\($0.types.joined(separator: ",")))" }
     for (_, group) in overloads.sorted(by: { $0.key < $1.key }) where group.count > 1 {
         let keys = group.map { literal($0.key) }.joined(separator: ", ")
-        warnings.append("Keys \(keys) skipped: they all generate `\(group[0].name)`. Rename all but one of them.")
+        errors.append(
+            "Keys \(keys) would all generate `\(group[0].name)`. Rename all but one of them, or "
+                + "set \"generatesSymbol\" : false on the ones that need no member.")
     }
-    let code = members
-        .filter { member in overloads["\(member.name)(\(member.types.joined(separator: ",")))"]!.count == 1 }
-        .map(\.code)
-        .joined(separator: "\n")
+    guard errors.isEmpty else { throw GeneratorError(errors) }
+    let code = members.map(\.code).joined(separator: "\n")
 
     var body = code
     if nested {
         var typeName = identifier(for: table)
         guard !typeName.isEmpty else {
-            throw GeneratorError(description: "\(table).xcstrings: the table name can't be turned into a Swift name.")
+            throw GeneratorError(["\(table).xcstrings: the table name can't be turned into a Swift name."])
         }
         if typeName.first != "_" { typeName = typeName.prefix(1).uppercased() + typeName.dropFirst() }
         body = "    enum \(typeName) {\n\(code)    }\n"
