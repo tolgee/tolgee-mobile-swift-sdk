@@ -139,7 +139,15 @@ Add the `TolgeeKeysPlugin` build plugin to your target. In Xcode: target → Bui
 )
 ```
 
-It generates a member for every key in your String Catalogs, so a typo in a key name or a wrong or missing argument fails the build.
+Building an Xcode target with `xcodebuild` (CI, scripts) needs two things the Xcode UI takes care of. Pass `-skipPackagePluginValidation`, since a build tool plugin otherwise has to be enabled interactively in Xcode first. And pick the platform with `-destination` rather than `-sdk`: `-sdk iphonesimulator` also applies to the plugin's macOS host tool and fails with `Missing package product 'tolgee-mobile-swift-sdk_TolgeeKeysPlugin.TolgeeKeysPlugin'`.
+
+```sh
+xcodebuild -scheme MyApp -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation
+```
+
+If you wire the plugin into `project.pbxproj` with tooling rather than through the Build Phases UI: the plugin is an `XCSwiftPackageProductDependency` with `productName = "plugin:TolgeeKeysPlugin"`, referenced only from the `productRef` of a `PBXTargetDependency` in the target's `dependencies`. Listing it under the target's `packageProductDependencies` as well, where linked library products go, produces the same "Missing package product" error.
+
+The plugin generates a member for every key in your String Catalogs, so a typo in a key name or a wrong or missing argument fails the build.
 
 ```swift
 TolgeeText(.welcomeTitle)
