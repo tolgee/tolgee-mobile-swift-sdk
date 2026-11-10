@@ -3,6 +3,12 @@ import Testing
 
 @testable import Tolgee
 
+/// Older toolchains copy a String Catalog into a package's resource bundle unprocessed instead of compiling it
+/// (`swift build` under Xcode 16 logs "Copying TypedKeys.xcstrings"), so no table exists at run time and every
+/// lookup returns the key. Xcode's own build system, and SwiftPM in Xcode 26 and later, compile it.
+private let typedKeysCatalogIsCompiled =
+  Bundle.module.path(forResource: "TypedKeys", ofType: "strings", inDirectory: nil, forLocalization: "en") != nil
+
 @MainActor
 struct TolgeeTestsEn {
 
@@ -199,7 +205,8 @@ struct TolgeeTestsEn {
         == "[remote] Hello, world from custom namespace!")
   }
 
-  @Test func testGeneratedTypedKeys() throws {
+  @Test(.enabled(if: typedKeysCatalogIsCompiled, "this toolchain copies String Catalogs into the bundle instead of compiling them"))
+  func testGeneratedTypedKeys() throws {
     let tolgee = TestContext().tolgee
     tolgee.initialize(cdn: URL(string: "https://cdn.example.com")!, locale: englishLocale)
 

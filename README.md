@@ -147,6 +147,8 @@ xcodebuild -scheme MyApp -destination 'generic/platform=iOS Simulator' -skipPack
 
 If you wire the plugin into `project.pbxproj` with tooling rather than through the Build Phases UI: the plugin is an `XCSwiftPackageProductDependency` with `productName = "plugin:TolgeeKeysPlugin"`, referenced only from the `productRef` of a `PBXTargetDependency` in the target's `dependencies`. Listing it under the target's `packageProductDependencies` as well, where linked library products go, produces the same "Missing package product" error.
 
+In a Swift package, the catalog must also be compiled into the package's resource bundle, or every lookup, typed or not, returns the key. Xcode's build system does that on every Xcode that supports String Catalogs. `swift build` and `swift test` do it from the SwiftPM in Xcode 26; the SwiftPM in Xcode 16 copies the `.xcstrings` file into the bundle unprocessed (the build log says `Copying <Table>.xcstrings`).
+
 The plugin generates a member for every key in your String Catalogs, so a typo in a key name or a wrong or missing argument fails the build.
 
 ```swift
