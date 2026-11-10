@@ -158,7 +158,7 @@ Parameter types come from the format specifiers of all texts of the key (every l
 Keys that can't get a safe member are skipped, with a build warning that names the key and the reason. For example two keys that would get the same name, or a `%s` specifier. String keys keep working for them. `InfoPlist.xcstrings` and `AppShortcuts.xcstrings` are not processed.
 
 > [!NOTE]
-> Keys with more than one pluralized argument (Xcode's `%#@name@` substitutions) get a typed member too, but the CDN can only deliver a single plural per key, so those keys are always served from the app bundle.
+> Keys with more than one plural argument (several `%#@name@` substitutions in one string) get no member. The CDN delivers a single plural per key, so such a key would never update over the air, and a typed member would hide that behind a call that looks like every other one. The generator names these keys in the build log, as plain lines rather than warnings since there is nothing to fix, and in a comment at the end of the generated file. Use the string key; it is served from the app bundle.
 
 > [!IMPORTANT]
 > `translate(_:)` and `TolgeeText(_:)` now accept a `TolgeeKey` as well as a `String`. If your app declares its own `static let` String constants for keys and calls them with implicit member syntax, such as `translate(.homeTitle)`, a generated key with the same name makes that call ambiguous or resolves it to the typed key. Write the type out (`translate(String.homeTitle)`) or drop the constants in favour of the generated keys.
