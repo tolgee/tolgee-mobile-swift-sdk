@@ -120,6 +120,30 @@ struct TolgeeKeysGeneratorTests {
         } } }
         """#)
     #expect(result.code.contains("static func `hasItems`(_ arg1: String, _ arg2: Int) -> TolgeeKey {"))
+    #expect(result.notes.isEmpty)
+  }
+
+  @Test func keysWithMoreThanOnePluralArgumentGetNoMember() throws {
+    func plural(_ argNum: Int, _ noun: String) -> String {
+      #"{ "argNum" : \#(argNum), "formatSpecifier" : "lld", "variations" : { "plural" : { "#
+        + #""one" : \#(unit("%arg \(noun)")), "other" : \#(unit("%arg \(noun)s")) } } }"#
+    }
+    let result = try generate(
+      strings: #""fruit" : { "localizations" : { "en" : { "#
+        + #""stringUnit" : { "state" : "translated", "value" : "%#@apples@ and %#@oranges@" }, "#
+        + #""substitutions" : { "apples" : \#(plural(1, "apple")), "oranges" : \#(plural(2, "orange")) } } } }, "#
+        + #""other" : {}"#)
+    #expect(!result.code.contains("`fruit`"))
+    #expect(result.code.contains("static var `other`: TolgeeKey {"))
+    #expect(result.warnings.isEmpty)
+    #expect(
+      result.notes == [
+        "Key \"fruit\" has no member: it has 2 plural arguments (apples, oranges) and the CDN delivers a single "
+          + "plural per key. Use the string key; it is served from the app bundle only."
+      ])
+    #expect(
+      result.code.hasSuffix(
+        "}\n\n// Keys without a member, served from the app bundle only:\n// \(result.notes[0])\n"))
   }
 
   @Test func percentSignInPlainTextIsNotAParameter() throws {
