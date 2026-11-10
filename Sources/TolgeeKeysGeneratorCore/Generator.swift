@@ -231,7 +231,9 @@ private func parameters(
     var types: [Int: String] = [:]
     var next = 1
     var pluralArguments: Set<String> = []
-    for match in specifier.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+    let matches = specifier.matches(in: text, range: NSRange(text.startIndex..., in: text))
+    try checkForUnreadableSpecifiers(in: text, parsed: matches.map { Range($0.range, in: text)! })
+    for match in matches {
         let group = { (index: Int) in Range(match.range(at: index), in: text).map { String(text[$0]) } }
         if group(4) == "%" { continue }
         let whole = group(0)!
@@ -274,6 +276,22 @@ private func parameters(
                 + "and the CDN delivers a single plural per key")
     }
     return types
+}
+
+/// A `%` the specifier pattern did not accept is plain text when a space, punctuation or the end of the text
+/// follows it ("50% off", "Save 20%!"). When a letter, digit or specifier character follows, it is a specifier
+/// the generator can't read, such as `%1$1$ld`. Foundation reads such a sequence in its own way, so a member
+/// generated from the readable specifiers alone would silently take the wrong parameters.
+private func checkForUnreadableSpecifiers(in text: String, parsed: [Range<String.Index>]) throws {
+    for index in text.indices where text[index] == "%" && !parsed.contains(where: { $0.contains(index) }) {
+        let next = text.index(after: index)
+        guard next < text.endIndex, text[next].isLetter || text[next].isNumber || "$.-+#".contains(text[next])
+        else { continue }
+        var sequence = String(
+            text[index...].prefix(while: { $0.isASCII && ($0.isLetter || $0.isNumber || "%$.-+#@".contains($0)) }).prefix(12))
+        while let last = sequence.last, ".-+#$".contains(last) { sequence.removeLast() }
+        throw UnsupportedKey(reason: "\(sequence) can't be read as a format specifier")
+    }
 }
 
 /// Integer specifiers map to `Int` / `UInt` whatever their length modifier. `%d` is very common in

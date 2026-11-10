@@ -147,9 +147,23 @@ struct TolgeeKeysGeneratorTests {
   }
 
   @Test func percentSignInPlainTextIsNotAParameter() throws {
-    let result = try generate(strings: #""Get 50% off" : {}, "fee" : \#(text("A 3% fee applies to %@"))"#)
+    let result = try generate(
+      strings: #""Get 50% off" : {}, "fee" : \#(text("A 3% fee applies to %@")), "Save 20%!" : {}, "all" : \#(text("100%"))"#)
     #expect(result.code.contains("static var `get50Off`: TolgeeKey {"))
     #expect(result.code.contains("static func `fee`(_ arg1: String) -> TolgeeKey {"))
+    #expect(result.code.contains("static var `save20`: TolgeeKey {"))
+    #expect(result.code.contains("static var `all`: TolgeeKey {"))
+    #expect(result.warnings.isEmpty)
+  }
+
+  @Test func unreadableSpecifiersSkipTheKey() throws {
+    let result = try generate(
+      strings: #""step" : \#(text("Step %1$1$ld of %2$2$ld")), "letter" : \#(text("%y items")), "ok" : \#(text("%1$@ of %2$@"))"#)
+    #expect(!result.code.contains("`step`"))
+    #expect(!result.code.contains("`letter`"))
+    #expect(result.code.contains("static func `ok`(_ arg1: String, _ arg2: String) -> TolgeeKey {"))
+    #expect(result.warnings.count == 2)
+    #expect(result.warnings.contains("Key \"step\" skipped: %1$1$ld can't be read as a format specifier."))
   }
 
   @Test func integerTypesIgnoreTheLengthModifier() throws {

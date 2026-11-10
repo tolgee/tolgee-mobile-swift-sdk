@@ -155,7 +155,7 @@ TolgeeText(.Payments.confirm)
 
 Parameter types come from the format specifiers of all texts of the key (every language, plural form and device variation): `%@` is `String`, `%d` and `%lld` are `Int`, `%u` and `%lu` are `UInt`, `%f` is `Double`. Key names are converted to camel case (`home.send_money` becomes `homeSendMoney`). Each key remembers the bundle of its String Catalog, so keys from a Swift package or framework work without passing `bundle:`. Typed keys behave exactly like string keys, including plurals and over-the-air updates.
 
-Keys that can't get a safe member are skipped, with a build warning that names the key and the reason. For example two keys that would get the same name, or a `%s` specifier. String keys keep working for them. `InfoPlist.xcstrings` and `AppShortcuts.xcstrings` are not processed.
+Keys that can't get a safe member are skipped, with a build warning that names the key and the reason. For example two keys that would get the same name, a `%s` specifier, or a sequence that looks like a specifier but can't be read, such as `%1$1$ld`. String keys keep working for them. `InfoPlist.xcstrings` and `AppShortcuts.xcstrings` are not processed.
 
 > [!NOTE]
 > Keys with more than one plural argument (several `%#@name@` substitutions in one string) get no member. The CDN delivers a single plural per key, so such a key would never update over the air, and a typed member would hide that behind a call that looks like every other one. The generator names these keys in the build log, as plain lines rather than warnings since there is nothing to fix, and in a comment at the end of the generated file. Use the string key; it is served from the app bundle.
