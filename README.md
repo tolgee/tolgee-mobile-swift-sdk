@@ -316,6 +316,9 @@ let commonGreeting = Tolgee.shared.translate("hello", bundle: bundle)
 TolgeeText("hello", bundle: bundle)
 ```
 
+> [!NOTE]
+> A custom locale, whether set on the SDK or passed to `translate(...)`, is matched against the localizations of the bundle the string is read from. Each bundle resolves on its own, so a package may carry a different set of localizations than the app, or name one differently (`pt` next to the app's `pt-BR`). The language fetched from the CDN is still chosen from the app's localizations.
+
 ### Log Forwarding
 Tolgee allows forwarding of logs that are printed to the console by default.
 You can use this feature to forward errors and other logs into your analytics.
