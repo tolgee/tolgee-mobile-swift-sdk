@@ -52,7 +52,6 @@ public final class Tolgee {
     private var namespaces: Set<String> = []
 
     private var customLocale: Locale? = nil
-    private var customLocalLanguage: String? = nil
 
     /// The active locale used by the SDK.
     ///
@@ -174,9 +173,9 @@ public final class Tolgee {
             Bundle.swizzle()
         }
 
-        let languages = try? resolveLanguages(from: customLocale)
+        let detectedCdnLanguage = try? resolveCdnLanguage(from: customLocale)
 
-        self.language = customCdnLanguage ?? languages?.cdnLanguage
+        self.language = customCdnLanguage ?? detectedCdnLanguage
 
         guard let language else {
             logger.error("Language must be specified for Tolgee initialization")
@@ -184,13 +183,12 @@ public final class Tolgee {
         }
 
         if customLocale != .current {
-            guard let customLocalLanguage = languages?.localLanguage else {
+            guard detectedCdnLanguage != nil else {
                 logger.error(
                     "The provided locale \(customLocale.identifier) is not supported by the app localizations"
                 )
                 return
             }
-            self.customLocalLanguage = customLocalLanguage
             self.customLocale = customLocale
         }
 
@@ -300,6 +298,8 @@ public final class Tolgee {
     ///   - locale: A custom locale to use for this specific translation (defaults to `.current`).
     ///     This parameter is primarily intended for SwiftUI previews. When set to a non-current locale,
     ///     translations from the CDN will be ignored and only bundle localizations will be used.
+    ///     The locale is matched against the localizations of `bundle`; if `bundle` has none for it,
+    ///     the key is returned.
     ///     Note: If a custom locale is set on the SDK level via ``setCustomLocale(_:language:)``,
     ///     it will take precedence and this parameter will be ignored.
     ///
@@ -331,21 +331,24 @@ public final class Tolgee {
             )
         }
 
-        var customLocalLanguage = self.customLocalLanguage
         let locale = customLocale ?? providedLocale
         var canUseDataFromCdn = true
 
+        // A locale other than the system one is matched against the localizations of the bundle
+        // the string is read from, not of the app. A package or a framework has its own set of
+        // localizations, and may name the same one differently (e.g. "pt" next to the app's "pt-BR").
+        var bundle = bundle
+
         // Setting ccustom locale on SDK lavel overrides provided locale in method param
         if customLocale == nil && providedLocale != .current {
-            guard let localLanguage = resolveLanguage(for: locale, in: bundleForLanguageDetection),
-                doesLocaleMatchLanguage(locale, language: localLanguage)
+            guard let localizedBundle = bundleRepository.localizedBundle(for: locale, in: bundle)
             else {
                 logger.error(
-                    "The provided locale \(providedLocale.identifier) is not supported by the app localizations"
+                    "The provided locale \(providedLocale.identifier) is not supported by the localizations of bundle \(bundle.bundlePath)"
                 )
                 return key
             }
-            customLocalLanguage = localLanguage
+            bundle = localizedBundle
             canUseDataFromCdn = false
         }
 
@@ -393,16 +396,12 @@ public final class Tolgee {
 
         // Fallback to bundle.localizedString
 
-        var bundle = bundle
-        if let customLocalLanguage {
-            if let replacementBundle = bundleRepository.bundle(
-                for: customLocalLanguage,
-                referenceBundle: bundle)
-            {
-                bundle = replacementBundle
+        if let customLocale {
+            if let localizedBundle = bundleRepository.localizedBundle(for: customLocale, in: bundle) {
+                bundle = localizedBundle
             } else {
                 logger.error(
-                    "No localization bundle found for locale \(customLocale?.identifier ?? "") in bundle \(bundle.bundlePath)"
+                    "No localization bundle found for locale \(customLocale.identifier) in bundle \(bundle.bundlePath)"
                 )
             }
         }
@@ -473,9 +472,10 @@ public final class Tolgee {
             didUpdateLocale = false
         } else {
 
-            let languages = try resolveLanguages(from: locale)
+            // Resolved even when `cdnLanguage` is given, as it is what rejects an unsupported locale.
+            let detectedCdnLanguage = try resolveCdnLanguage(from: locale)
 
-            let newCdnLanguage = cdnLanguage ?? languages.cdnLanguage
+            let newCdnLanguage = cdnLanguage ?? detectedCdnLanguage
 
             needsLanguageChange = newCdnLanguage != self.language
 
@@ -483,10 +483,8 @@ public final class Tolgee {
 
             if locale == .current {
                 self.customLocale = nil
-                self.customLocalLanguage = nil
             } else {
                 self.customLocale = locale
-                self.customLocalLanguage = languages.localLanguage
             }
             didUpdateLocale = true
         }
@@ -596,13 +594,15 @@ public final class Tolgee {
         }
     }
 
-    private func resolveLanguages(from locale: Locale)
-        throws -> (localLanguage: String, cdnLanguage: String)
-    {
+    /// Resolves the language to fetch from the CDN for `locale`.
+    ///
+    /// This is matched against `bundleForLanguageDetection`. Strings read from a bundle are matched
+    /// against that bundle instead, see ``translate(_:_:table:bundle:locale:)``.
+    private func resolveCdnLanguage(from locale: Locale) throws -> String {
         if let localLanguage = resolveLanguage(for: locale, in: bundleForLanguageDetection),
             doesLocaleMatchLanguage(locale, language: localLanguage)
         {
-            return (localLanguage, localLanguageToCdnLanguage(localLanguage))
+            return localLanguageToCdnLanguage(localLanguage)
         } else {
             logger.error(
                 "The provided locale \(locale.identifier) is not supported by the app localizations"

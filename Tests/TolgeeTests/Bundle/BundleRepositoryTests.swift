@@ -118,4 +118,88 @@ struct BundleRepositoryTests {
         #expect(ptBrBundle === ptBrBundle2)
         #expect(zhHansBundle === zhHansBundle2)
     }
+
+    @Test func testBundleCachingIsPerReferenceBundle() throws {
+        let repository = BundleRepository()
+        let fixture = try FixtureBundle(localizations: [
+            "en": ["Hello, world!": "[fixture] Hello, world!"]
+        ])
+
+        let moduleBundle = repository.bundle(for: "en", referenceBundle: .module)
+        let fixtureBundle = repository.bundle(for: "en", referenceBundle: fixture.bundle)
+
+        #expect(moduleBundle !== fixtureBundle)
+        #expect(
+            fixtureBundle?.localizedString(forKey: "Hello, world!", value: nil, table: nil)
+                == "[fixture] Hello, world!")
+        #expect(repository.bundle(for: "en", referenceBundle: .module) === moduleBundle)
+    }
+
+    @Test func testBundleNotFoundInAnotherReferenceBundleAfterCaching() throws {
+        let repository = BundleRepository()
+        let fixture = try FixtureBundle(localizations: [
+            "en": ["Hello, world!": "[fixture] Hello, world!"]
+        ])
+
+        #expect(repository.bundle(for: "cs", referenceBundle: .module) != nil)
+        #expect(repository.bundle(for: "cs", referenceBundle: fixture.bundle) == nil)
+    }
+
+    @Test func testLocalizedBundleForLocaleWithRegion() throws {
+        let repository = BundleRepository()
+
+        let result = repository.localizedBundle(for: Locale(identifier: "cs_CZ"), in: .module)
+
+        #expect(
+            result?.localizedString(forKey: "Hello, world!", value: nil, table: nil)
+                == "[local] Ahoj, světe!")
+    }
+
+    @Test func testLocalizedBundleFallsBackToAvailableRegionVariant() throws {
+        let repository = BundleRepository()
+
+        let result = repository.localizedBundle(for: Locale(identifier: "pt_PT"), in: .module)
+
+        #expect(
+            result?.localizedString(forKey: "Hello, world!", value: nil, table: nil)
+                == "[local] Olá, mundo!")
+    }
+
+    @Test func testLocalizedBundleReturnsNilForUnsupportedLocale() throws {
+        let repository = BundleRepository()
+
+        // Asked twice, so the second answer comes from the cached miss.
+        #expect(repository.localizedBundle(for: Locale(identifier: "de"), in: .module) == nil)
+        #expect(repository.localizedBundle(for: Locale(identifier: "de"), in: .module) == nil)
+    }
+
+    @Test func testLocalizedBundleIsResolvedPerReferenceBundle() throws {
+        let repository = BundleRepository()
+        let fixture = try FixtureBundle(localizations: [
+            "en": ["Hello, world!": "[fixture] Hello, world!"],
+            "de": ["Hello, world!": "[fixture] Hallo, Welt!"],
+        ])
+        let german = Locale(identifier: "de")
+        let czech = Locale(identifier: "cs")
+
+        #expect(repository.localizedBundle(for: german, in: .module) == nil)
+        #expect(
+            repository.localizedBundle(for: german, in: fixture.bundle)?
+                .localizedString(forKey: "Hello, world!", value: nil, table: nil)
+                == "[fixture] Hallo, Welt!")
+
+        #expect(repository.localizedBundle(for: czech, in: .module) != nil)
+        #expect(repository.localizedBundle(for: czech, in: fixture.bundle) == nil)
+    }
+
+    @Test func testLocalizedBundleCaching() throws {
+        let repository = BundleRepository()
+        let locale = Locale(identifier: "cs_CZ")
+
+        let first = repository.localizedBundle(for: locale, in: .module)
+        let second = repository.localizedBundle(for: locale, in: .module)
+
+        #expect(first != nil)
+        #expect(first === second)
+    }
 }
