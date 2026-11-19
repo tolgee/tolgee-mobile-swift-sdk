@@ -230,6 +230,7 @@ public final class Tolgee {
                 language: languageBeingFetched,
                 namespaces: self.namespaces,
                 cdnURL: cdnURL.absoluteString,
+                appVersionSignature: appVersionSignature,
                 cache: self.cache
             )
             cdnEtags = await Task.detached {
@@ -537,14 +538,6 @@ public final class Tolgee {
                     appVersionSignature: appVersionSignature, cdn: cdn.absoluteString))
         }
 
-        if let etag = cache.loadCdnEtag(for: .init(language: language, cdn: cdn.absoluteString)) {
-            cdnEtags[""] = etag
-            logger.debug(
-                "Loaded CDN ETag for language: \(language) and base namespace - ETag: \(etag)")
-        } else {
-            logger.debug("No CDN ETag found for language: \(language) and base namespace")
-        }
-
         if let data = cache.loadRecords(
             for: CacheDescriptor(
                 language: language, appVersionSignature: appVersionSignature,
@@ -557,6 +550,11 @@ public final class Tolgee {
                 logger.debug(
                     "Loaded cached translations for language: \(language) and base namespace"
                 )
+                if let etag = cache.loadCdnEtag(for: .init(language: language, cdn: cdn.absoluteString)) {
+                    cdnEtags[""] = etag
+                    logger.debug(
+                        "Loaded CDN ETag for language: \(language) and base namespace - ETag: \(etag)")
+                }
             } catch {
                 logger.error("Failed to load cached translations: \(error)")
             }
@@ -565,17 +563,6 @@ public final class Tolgee {
         }
 
         for namespace in namespaces {
-
-            if let etag = cache.loadCdnEtag(
-                for: .init(language: language, namespace: namespace, cdn: cdn.absoluteString))
-            {
-                cdnEtags[namespace] = etag
-                logger.debug(
-                    "Loaded CDN ETag for language: \(language), namespace: \(namespace) - ETag: \(etag)"
-                )
-            } else {
-                logger.debug("No CDN ETag found for language: \(language), namespace: \(namespace)")
-            }
 
             if let data = cache.loadRecords(
                 for: CacheDescriptor(
@@ -589,6 +576,14 @@ public final class Tolgee {
                     logger.debug(
                         "Loaded cached translations for language: \(language), namespace: \(namespace)"
                     )
+                    if let etag = cache.loadCdnEtag(
+                        for: .init(language: language, namespace: namespace, cdn: cdn.absoluteString))
+                    {
+                        cdnEtags[namespace] = etag
+                        logger.debug(
+                            "Loaded CDN ETag for language: \(language), namespace: \(namespace) - ETag: \(etag)"
+                        )
+                    }
                 } catch {
                     logger.error(
                         "Failed to load cached translations for namespace '\(namespace)': \(error)")
