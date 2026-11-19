@@ -116,7 +116,10 @@ final class RemoteFetchUseCase: Sendable {
                 do {
                     try self.cache.saveRecords(data, for: descriptor)
                 } catch {
+                    // Don't persist the ETag either: an ETag without cached translations would make
+                    // the next fetch get a 304 with nothing to fall back to.
                     await self.logger.error("Failed to save translations to cache: \(error)")
+                    continue
                 }
 
                 if let etag = response.allHeaderFields["Etag"] as? String {
