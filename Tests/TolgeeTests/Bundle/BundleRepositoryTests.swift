@@ -6,6 +6,16 @@ import Testing
 @MainActor
 struct BundleRepositoryTests {
 
+    /// The name of a localization as `Bundle.module` reports it.
+    ///
+    /// SwiftPM used to lower-case `.lproj` folder names in the resource bundle (`pt-br`), while
+    /// newer SwiftPM releases keep them as written (`pt-BR`). `bundle(for:referenceBundle:)` takes
+    /// the name as the bundle reports it, which is what `resolveLanguage` hands it.
+    private func localization(_ name: String) -> String {
+        Bundle.module.localizations.first { $0.caseInsensitiveCompare(name) == .orderedSame }
+            ?? name
+    }
+
     @Test func testBundleForEnglish() throws {
         let repository = BundleRepository()
         let referenceBundle = Bundle.module
@@ -22,7 +32,7 @@ struct BundleRepositoryTests {
         let repository = BundleRepository()
         let referenceBundle = Bundle.module
 
-        let result = repository.bundle(for: "pt-br", referenceBundle: referenceBundle)
+        let result = repository.bundle(for: localization("pt-br"), referenceBundle: referenceBundle)
 
         #expect(result != nil)
         #expect(
@@ -46,7 +56,8 @@ struct BundleRepositoryTests {
         let repository = BundleRepository()
         let referenceBundle = Bundle.module
 
-        let result = repository.bundle(for: "zh-hans", referenceBundle: referenceBundle)
+        let result = repository.bundle(
+            for: localization("zh-hans"), referenceBundle: referenceBundle)
 
         #expect(result != nil)
         #expect(
@@ -61,16 +72,6 @@ struct BundleRepositoryTests {
         let result = repository.bundle(for: "xyz", referenceBundle: referenceBundle)
 
         // Should return nil for unsupported language
-        #expect(result == nil)
-    }
-
-    @Test func testBundleReturnsNilForNonLowercaseLanguage() throws {
-        let repository = BundleRepository()
-        let referenceBundle = Bundle.module
-
-        let result = repository.bundle(for: "pt-BR", referenceBundle: referenceBundle)
-
-        // Should return nil since language must be lowercase
         #expect(result == nil)
     }
 
@@ -104,16 +105,20 @@ struct BundleRepositoryTests {
         let repository = BundleRepository()
         let referenceBundle = Bundle.module
 
-        let ptBrBundle = repository.bundle(for: "pt-br", referenceBundle: referenceBundle)
-        let zhHansBundle = repository.bundle(for: "zh-hans", referenceBundle: referenceBundle)
+        let ptBrBundle = repository.bundle(
+            for: localization("pt-br"), referenceBundle: referenceBundle)
+        let zhHansBundle = repository.bundle(
+            for: localization("zh-hans"), referenceBundle: referenceBundle)
 
         // Both should cache their own lookups
         #expect(ptBrBundle != nil)
         #expect(zhHansBundle != nil)
 
         // Verify caching works for repeat calls
-        let ptBrBundle2 = repository.bundle(for: "pt-br", referenceBundle: referenceBundle)
-        let zhHansBundle2 = repository.bundle(for: "zh-hans", referenceBundle: referenceBundle)
+        let ptBrBundle2 = repository.bundle(
+            for: localization("pt-br"), referenceBundle: referenceBundle)
+        let zhHansBundle2 = repository.bundle(
+            for: localization("zh-hans"), referenceBundle: referenceBundle)
 
         #expect(ptBrBundle === ptBrBundle2)
         #expect(zhHansBundle === zhHansBundle2)

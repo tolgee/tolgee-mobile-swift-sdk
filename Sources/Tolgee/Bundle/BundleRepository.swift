@@ -16,8 +16,10 @@ final class BundleRepository {
     /// bundle exists, it is returned immediately.
     ///
     /// - Parameters:
-    ///   - supportedLanguage: The language identifier to look up (e.g., "en", "pt-br", "zh-hans").
-    ///                        **Must be lower-cased** to match the `.lproj` directory naming convention.
+    ///   - supportedLanguage: The language identifier to look up (e.g., "en", "pt-BR", "zh-Hans").
+    ///                        Must match the `.lproj` directory name as the reference bundle
+    ///                        reports it in `localizations`, which is what `resolveLanguage(for:in:)`
+    ///                        returns.
     ///   - referenceBundle: The bundle containing the localization resources to search within.
     /// - Returns: The localized bundle if found, or nil if no matching localization exists.
     func bundle(for supportedLanguage: String, referenceBundle: Bundle) -> Bundle? {
