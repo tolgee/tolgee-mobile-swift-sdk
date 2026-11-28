@@ -127,6 +127,55 @@ let nameAndAge = Tolgee.shared.translate("My name is %@ and I'm %lld years old",
 > [!NOTE]
 > Strings with multiple pluralized parameters are currently **not supported**, for example `Tolgee.shared.translate("I have %lld apples and %lld oranges", 2, 3)`
 
+### Typed Keys
+
+Add the `TolgeeKeysPlugin` build plugin to your target. In Xcode: target → Build Phases → Run Build Tool Plug-ins. In a Swift package:
+
+```swift
+.target(
+    name: "MyFeature",
+    dependencies: [.product(name: "Tolgee", package: "tolgee-mobile-swift-sdk")],
+    plugins: [.plugin(name: "TolgeeKeysPlugin", package: "tolgee-mobile-swift-sdk")]
+)
+```
+
+Building an Xcode target with `xcodebuild` (CI, scripts) needs two things the Xcode UI takes care of. Pass `-skipPackagePluginValidation`, since a build tool plugin otherwise has to be enabled interactively in Xcode first. And pick the platform with `-destination` rather than `-sdk`: `-sdk iphonesimulator` also applies to the plugin's macOS host tool and fails with `Missing package product 'tolgee-mobile-swift-sdk_TolgeeKeysPlugin.TolgeeKeysPlugin'`.
+
+```sh
+xcodebuild -scheme MyApp -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation
+```
+
+If you wire the plugin into `project.pbxproj` with tooling rather than through the Build Phases UI: the plugin is an `XCSwiftPackageProductDependency` with `productName = "plugin:TolgeeKeysPlugin"`, referenced only from the `productRef` of a `PBXTargetDependency` in the target's `dependencies`. Listing it under the target's `packageProductDependencies` as well, where linked library products go, produces the same "Missing package product" error.
+
+In a Swift package, the catalog must also be compiled into the package's resource bundle, or every lookup, typed or not, returns the key. Xcode's build system does that on every Xcode that supports String Catalogs. `swift build` and `swift test` do it from the SwiftPM in Xcode 26; the SwiftPM in Xcode 16 copies the `.xcstrings` file into the bundle unprocessed (the build log says `Copying <Table>.xcstrings`).
+
+The plugin generates a member for every key in your String Catalogs, so a typo in a key name or a wrong or missing argument fails the build.
+
+```swift
+TolgeeText(.welcomeTitle)
+TolgeeText(.welcomeUser("John"))
+let itemCount = Tolgee.shared.translate(.itemsCount(5))
+```
+
+Keys from other tables than `Localizable` (for example Tolgee namespaces) are nested under the table name, so the same key can exist in more tables:
+
+```swift
+TolgeeText(.Payments.confirm)
+```
+
+Parameter types come from the format specifiers of all texts of the key (every language, plural form and device variation): `%@` is `String`, `%d` and `%lld` are `Int`, `%u` and `%lu` are `UInt`, `%f` is `Double`. Key names are converted to camel case (`home.send_money` becomes `homeSendMoney`). Each key remembers the bundle of its String Catalog, so keys from a Swift package or framework work without passing `bundle:`. Typed keys behave exactly like string keys, including plurals and over-the-air updates.
+
+Generation fails where Xcode's own symbol generator fails, with a build error that names every offending key in one run: keys that would all get the same member (`home.title` and `home_title`) and keys with no letters or digits. Rename them, or set `"generatesSymbol" : false` on the ones that need no member. That key in the catalog JSON is Xcode's own per-string opt-out, so one edit in the catalog editor settles the key for both generators. Keys that can't get a safe member because of their format specifiers are skipped with a build warning that names the key and the reason: a `%s` specifier, or a sequence that looks like a specifier but can't be read, such as `%1$1$ld`. String keys keep working for them. `InfoPlist.xcstrings` and `AppShortcuts.xcstrings` are not processed.
+
+> [!NOTE]
+> Since Xcode 26 every String Catalog also feeds Xcode's own symbol generator (`STRING_CATALOG_GENERATE_SYMBOLS`, on by default), which makes `LocalizedStringResource` members for the keys marked as manually added. With the plugin on the same target you get both sets of members, and Xcode's generator is stricter in one respect: a key with and without arguments (`Delete` and `Delete %@?`) is an overload here but a collision there. Set `STRING_CATALOG_GENERATE_SYMBOLS = NO` on targets that use the plugin if you only want the typed Tolgee keys.
+
+> [!NOTE]
+> Keys with more than one plural argument (several `%#@name@` substitutions in one string) get no member. The CDN delivers a single plural per key, so such a key would never update over the air, and a typed member would hide that behind a call that looks like every other one. The generator names these keys in the build log, as plain lines rather than warnings since there is nothing to fix, and in a comment at the end of the generated file. Use the string key; it is served from the app bundle.
+
+> [!IMPORTANT]
+> `translate(_:)` and `TolgeeText(_:)` now accept a `TolgeeKey` as well as a `String`. If your app declares its own `static let` String constants for keys and calls them with implicit member syntax, such as `translate(.homeTitle)`, a generated key with the same name makes that call ambiguous or resolves it to the typed key. Write the type out (`translate(String.homeTitle)`) or drop the constants in favour of the generated keys.
+
 ### 🔧 SwiftUI Integration
 
 Tolgee works great with SwiftUI, including previewing views in different localizations using SwiftUI previews.
