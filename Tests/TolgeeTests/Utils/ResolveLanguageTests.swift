@@ -3,6 +3,10 @@ import Testing
 
 @testable import Tolgee
 
+/// Regional and script localizations are compared case-insensitively. SwiftPM used to lower-case
+/// `.lproj` folder names in the resource bundle (`pt-br`, `zh-hans`), while newer SwiftPM
+/// releases keep them as written (`pt-BR`, `zh-Hans`). `resolveLanguage` returns whatever the
+/// bundle reports, so the tests must accept both.
 struct ResolveLanguageTests {
 
     @Test func testResolveLanguageExactMatch() throws {
@@ -96,7 +100,7 @@ struct ResolveLanguageTests {
         let result = resolveLanguage(for: locale, in: bundle)
 
         // Should resolve to "pt-br" since that's the only Portuguese variant available
-        #expect(result == "pt-br")
+        #expect(result?.lowercased() == "pt-br")
     }
 
     @Test func testResolveLanguagePortuguesePortugalResolvesToBrazilian() throws {
@@ -106,7 +110,7 @@ struct ResolveLanguageTests {
         let result = resolveLanguage(for: locale, in: bundle)
 
         // Should fall back to "pt-br" since pt-PT is not available
-        #expect(result == "pt-br")
+        #expect(result?.lowercased() == "pt-br")
     }
 
     @Test func testResolveLanguagePortugueseBrazilExactMatch() throws {
@@ -116,7 +120,7 @@ struct ResolveLanguageTests {
         let result = resolveLanguage(for: locale, in: bundle)
 
         // Should match exactly to "pt-br"
-        #expect(result == "pt-br")
+        #expect(result?.lowercased() == "pt-br")
     }
 
     @Test func testResolveLanguagePortugueseBrazilWithUnderscore() throws {
@@ -126,7 +130,7 @@ struct ResolveLanguageTests {
         let result = resolveLanguage(for: locale, in: bundle)
 
         // Should resolve to "pt-br" even with underscore separator
-        #expect(result == "pt-br")
+        #expect(result?.lowercased() == "pt-br")
     }
 
     @Test func testResolveLanguageChineseBaseResolvesToSimplified() throws {
@@ -136,7 +140,7 @@ struct ResolveLanguageTests {
         let result = resolveLanguage(for: locale, in: bundle)
 
         // Should resolve to "zh-hans" since that's the only Chinese variant available
-        #expect(result == "zh-hans")
+        #expect(result?.lowercased() == "zh-hans")
     }
 
     @Test func testResolveLanguageChineseSimplifiedExactMatch() throws {
@@ -146,7 +150,7 @@ struct ResolveLanguageTests {
         let result = resolveLanguage(for: locale, in: bundle)
 
         // Should match exactly to "zh-hans"
-        #expect(result == "zh-hans")
+        #expect(result?.lowercased() == "zh-hans")
     }
 
     @Test func testResolveLanguageChineseSimplifiedWithUnderscore() throws {
@@ -156,7 +160,7 @@ struct ResolveLanguageTests {
         let result = resolveLanguage(for: locale, in: bundle)
 
         // Should resolve to "zh-hans" even with underscore separator
-        #expect(result == "zh-hans")
+        #expect(result?.lowercased() == "zh-hans")
     }
 
     @Test func testResolveLanguageChineseTraditionalFallsBackToEnglish() throws {
