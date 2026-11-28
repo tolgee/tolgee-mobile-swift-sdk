@@ -35,15 +35,17 @@ struct LookupBundleLanguageTests {
                 == "[package] Hallo, Welt!")
     }
 
-    @Test func providedLocaleMissingFromLookupBundleReturnsKey() throws {
+    @Test func providedLocaleMissingFromLookupBundleUsesItsDefaultLookup() throws {
         let package = try FixtureBundle(localizations: [
             "en": [key: "[package] Hello, world!"]
         ])
         let tolgee = makeTolgee()
 
         // Czech is a localization of the detection bundle, but not of the bundle being read.
+        // The same as with a custom locale set on the SDK, the bundle's own lookup decides.
         #expect(
-            tolgee.translate(key, bundle: package.bundle, locale: Locale(identifier: "cs")) == key)
+            tolgee.translate(key, bundle: package.bundle, locale: Locale(identifier: "cs"))
+                == "[package] Hello, world!")
     }
 
     // MARK: - Custom locale set on the SDK

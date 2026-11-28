@@ -299,7 +299,7 @@ public final class Tolgee {
     ///     This parameter is primarily intended for SwiftUI previews. When set to a non-current locale,
     ///     translations from the CDN will be ignored and only bundle localizations will be used.
     ///     The locale is matched against the localizations of `bundle`; if `bundle` has none for it,
-    ///     the key is returned.
+    ///     the bundle's default lookup is used, as it is without a custom locale.
     ///     Note: If a custom locale is set on the SDK level via ``setCustomLocale(_:language:)``,
     ///     it will take precedence and this parameter will be ignored.
     ///
@@ -334,21 +334,8 @@ public final class Tolgee {
         let locale = customLocale ?? providedLocale
         var canUseDataFromCdn = true
 
-        // A locale other than the system one is matched against the localizations of the bundle
-        // the string is read from, not of the app. A package or a framework has its own set of
-        // localizations, and may name the same one differently (e.g. "pt" next to the app's "pt-BR").
-        var bundle = bundle
-
         // Setting ccustom locale on SDK lavel overrides provided locale in method param
         if customLocale == nil && providedLocale != .current {
-            guard let localizedBundle = bundleRepository.localizedBundle(for: locale, in: bundle)
-            else {
-                logger.error(
-                    "The provided locale \(providedLocale.identifier) is not supported by the localizations of bundle \(bundle.bundlePath)"
-                )
-                return key
-            }
-            bundle = localizedBundle
             canUseDataFromCdn = false
         }
 
@@ -396,12 +383,18 @@ public final class Tolgee {
 
         // Fallback to bundle.localizedString
 
-        if let customLocale {
-            if let localizedBundle = bundleRepository.localizedBundle(for: customLocale, in: bundle) {
+        // A locale other than the system one, whether set on the SDK or passed to this method, is
+        // matched against the localizations of the bundle the string is read from, not of the app.
+        // A package or a framework has its own set of localizations, and may name the same one
+        // differently (e.g. "pt" next to the app's "pt-BR"). When the bundle has none for the locale,
+        // its own default lookup is used, which is also what happens without a custom locale.
+        var bundle = bundle
+        if locale != .current {
+            if let localizedBundle = bundleRepository.localizedBundle(for: locale, in: bundle) {
                 bundle = localizedBundle
             } else {
                 logger.error(
-                    "No localization bundle found for locale \(customLocale.identifier) in bundle \(bundle.bundlePath)"
+                    "No localization bundle found for locale \(locale.identifier) in bundle \(bundle.bundlePath)"
                 )
             }
         }
